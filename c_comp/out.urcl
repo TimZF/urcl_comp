@@ -1,0 +1,74 @@
+BITS >= 16
+MINREG 15
+MINRAM 1024
+
+
+IMM R15, 0
+CAL ._function_test
+HLT
+HLT
+HLT
+HLT
+
+
+BRA ._function_skip_test
+._function_test
+ADD R15, R15, 2
+
+//define x
+IMM R1, 5
+MOV R3, R15
+STORE R3, R1
+
+//define y
+IMM R1, 'A'
+SUB R3, R15, 1
+STORE R3, R1
+
+//if(y < 127 && x > 5 || x & 1 == 1)
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 127
+MOV R3, R1
+SETL R1, R2, R3
+MOV R2, R1
+R2 = y<127
+
+BRZ ._if_skip_end_0
+MOV R3, R15
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 5
+MOV R3, R1
+SETG R1, R2, R3
+MOV R2, R1
+PSH R2
+MOV R3, R15
+LOAD R1, R3
+MOV R2, R1
+PSH R2
+IMM, R1, 1
+MOV R3, R1
+POP R2
+AND R1, R2, R3
+MOV R3, R1
+POP R2
+SETNE R2, R2, 0
+SETNE R3, R3, 0
+OR R1, R2, R3
+MOV R3, R1
+BRZ ._if_skip_end_0
+
+//FuncCall __debugScreen__(y)
+SUB R3, R15, 1
+LOAD R1, R3
+OUT 3, R1
+//y++
+INC R1, R1
+STORE R3, R1
+._if_skip_end_0
+SUB R15, R15, 2
+RET
+._function_skip_test
+
+
