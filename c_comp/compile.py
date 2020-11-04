@@ -747,14 +747,14 @@ def binaryOp(binOp, inMethod, lazyTarget = None):
 			out.append("SETNE R3, R3, 0")
 			out.append("AND R1, R2, R3")
 	elif op=="||":
-		if lazyTarget:
-			l = expression(left, inMethod)+["MOV R2, R1", lazyTarget]
-			r = expression(right, inMethod)+["MOV R3, R1"]
-			out = l+r
-		else:
-			out.append("SETNE R2, R2, 0")
-			out.append("SETNE R3, R3, 0")
-			out.append("OR R1, R2, R3")
+		#if lazyTarget:
+		#	l = expression(left, inMethod)+["MOV R2, R1", lazyTarget]
+		#	r = expression(right, inMethod)+["MOV R3, R1"]
+		#	out = l+r
+		#else:
+		out.append("SETNE R2, R2, 0")
+		out.append("SETNE R3, R3, 0")
+		out.append("OR R1, R2, R3")
 	
 	elif op =="==":
 		out.append("SETE R1, R2, R3")

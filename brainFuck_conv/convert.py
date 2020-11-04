@@ -55,7 +55,7 @@ coms = setToZero+coms
 print(jumpsAdd, maxAddress, nJumps)
 
 with open("out.urcl","w") as f:
-	a = (">=8" if doesTheCPUHaveMoreThen8Bit else "8")
+	a = ("16" if doesTheCPUHaveMoreThen8Bit else "8")
 	f.write(f"BITS {a}\nMINREG 3\nMINRAM {maxAddress+1}\n\n")
 	for c in coms:
 		f.write(c+"\n")

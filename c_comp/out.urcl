@@ -32,8 +32,6 @@ IMM R1, 127
 MOV R3, R1
 SETL R1, R2, R3
 MOV R2, R1
-R2 = y<127
-
 BRZ ._if_skip_end_0
 MOV R3, R15
 LOAD R1, R3
