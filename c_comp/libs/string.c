@@ -57,7 +57,7 @@ int atoi(char *number)
 
 
 
-int stringLen(char *c) {
+int strlen(char *c) {
 	int x = 0;
 	while (c[x]!=0){
 		x++;
@@ -67,7 +67,7 @@ int stringLen(char *c) {
 
 
 
-int strCmp(char *c, char *c2) {
+int strcmp(char *c, char *c2) {
 	int x = 0;
 	while (true){
 		if(c[x]!=c2[x]){return false;}
@@ -75,5 +75,42 @@ int strCmp(char *c, char *c2) {
 		x++;
 	}
 	return true;
+}
+
+
+void strcpy(char *c, char *c2) {
+	int x = 0;
+	while (true){
+		if(c[x]==0){return;}
+		else{c2[x] = c[x]}
+		x++;
+	}
+}
+
+
+char* strcat(char *c, char *c2) {
+	char* out = calloc(strlen(c)+strlen(c2)+1, 0);
+	int x = 0;
+	while (c[x]!=0){
+		out[x] = c[x];
+		x++;
+	}
+	x = 0;
+	while (c2[x]!=0){
+		out[x] = c2[x];
+		x++;
+	}
+	return out;
+}
+
+
+char* strdup(char *c) {
+	char* out = calloc(strlen(c)+1, 0);
+	int x = 0;
+	while (c[x]!=0){
+		out[x] = c[x];
+		x++;
+	}
+	return out;
 }
 

@@ -4,69 +4,54 @@ MINRAM 1024
 
 
 IMM R15, 0
-CAL ._function_test
+CAL ._function_main
 HLT
 HLT
 HLT
 HLT
 
 
-BRA ._function_skip_test
-._function_test
-ADD R15, R15, 2
+BRA ._function_skip_Main
+._function_Main
+ADD R15, R15, 5
 
-//define x
-IMM R1, 5
+//define *a[]
+SUB R3, R15, 2
+SUB R2, R15, 3
+STORE R2, R3
+IMM R1, 3
 MOV R3, R15
 STORE R3, R1
-
-//define y
-IMM R1, 'A'
+IMM R1, 2
 SUB R3, R15, 1
 STORE R3, R1
-
-//if(y < 127 && x > 5 || x & 1 == 1)
-LOAD R1, R3
-MOV R2, R1
-IMM R1, 127
-MOV R3, R1
-SETL R1, R2, R3
-MOV R2, R1
-BRZ ._if_skip_end_0
-MOV R3, R15
-LOAD R1, R3
-MOV R2, R1
-IMM R1, 5
-MOV R3, R1
-SETG R1, R2, R3
-MOV R2, R1
-PSH R2
-MOV R3, R15
-LOAD R1, R3
-MOV R2, R1
-PSH R2
-IMM, R1, 1
-MOV R3, R1
-POP R2
-AND R1, R2, R3
-MOV R3, R1
-POP R2
-SETNE R2, R2, 0
-SETNE R3, R3, 0
-OR R1, R2, R3
-MOV R3, R1
-BRZ ._if_skip_end_0
-
-//FuncCall __debugScreen__(y)
-SUB R3, R15, 1
-LOAD R1, R3
-OUT 3, R1
-//y++
-INC R1, R1
+IMM R1, 1
+SUB R3, R15, 2
 STORE R3, R1
-._if_skip_end_0
-SUB R15, R15, 2
+
+//define *pt
+SUB R3, R15, 3
+LOAD R1, R3
+SUB R2, R15, 4
+STORE R2, R1
+
+//*(pt + 1) = 5
+IMM R1, 5
+PSH R1
+SUB R3, R15, 4
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 1
+MOV R3, R1
+ADD R1, R2, R3
+POP R2
+STORE R1, R2
+
+//FuncCall __debugInt__(sizeof)
+IMM R1, 1
+OUT 0, R1
+SUB R15, R15, 5
 RET
-._function_skip_test
+._function_skip_Main
 
 

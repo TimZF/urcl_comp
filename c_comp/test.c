@@ -1,13 +1,7 @@
-#include "libs/iso646.h"
-
-
-void test(){
-	int x = 5;
-	int y = 'A';
-
-
-	if(y<127 and (x>5 or x&1==1)){
-		__debugScreen__(y);
-		y++;
-	}
+void Main(){
+    int a[3] = {1,2,3};
+    int* pt = a;
+    *(pt+1) = 5;
+    //__debugInt__(*(pt+1));
+    __debugInt__(sizeof(char));
 }

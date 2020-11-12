@@ -1,4 +1,4 @@
-
+#define size_t int
 #define maxAddress 16380
 #define maxHeapSize 10000
 
@@ -13,7 +13,8 @@ void init(){
 	head[3] = 1;
 }
 
-int* malloc(int size){
+int* malloc(size_t size){
+	if(size<=0){return 0;}
 	int *block;
 	block = head;
 	while(1==1){
@@ -41,7 +42,8 @@ int* malloc(int size){
 
 
 
-int* calloc(int size, int initVal){
+int* calloc(size_t size, int initVal){
+	if(size<=0){return 0;}
 	int *block;
 	block = head;
 	while(1==1){
@@ -109,7 +111,8 @@ void cleanUp(){
 	}
 }
 
-int* realloc(int *posi, int newSize){
+int* realloc(int *posi, size_t newSize){
+	if(newSize<=0){return 0;}
 	posi = posi[-2];
 	if(posi[0]>newSize){posi = posi[1];return posi+4;}
 

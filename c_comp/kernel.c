@@ -8,7 +8,7 @@
 #include "libs/string.c"
 #include "libs/arrayUtil.c"
 #include "libs/iso646.h"
-#include "libs/math.h"
+#include "libs/math.c"
 
 char help_string[] = "HELP\nCALC\nCL\nP\nQ\n";
 char commNotFound[] = "COMM\nNOT\nFOUND\nTRY\nHELP\n";
@@ -50,7 +50,7 @@ void calculator() {
 
 
 
-void test(){
+void main(){
 	int foundComm = 0;
 
 	init();

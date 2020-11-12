@@ -2,7 +2,7 @@ from pycparser import c_parser, c_ast, preprocess_file
 
 fileToCompile = "test.c"
 mpR = "R15"
-initFunc = "test"
+initFunc = "main"
 debugComments = True
 onlyUncommentOptims = False
 
@@ -24,6 +24,7 @@ builtInMethods = {}
 
 skipId = 0 
 structs = {}
+ptrToStruct = {}
 dataStrings = []
 
 
@@ -41,6 +42,8 @@ class MethodsVarHolder():
 
 	def append(self, varName, inMethod, typee):
 		if inMethod:
+			if varName in self.methods[inMethod]:
+				raise NotImplementedError("VARIABLE ALREADY DEFINED IN THIS SCOPE")
 			self.methods[inMethod].append(varName)
 		self.types[inMethod+"."+varName] = typee
 
@@ -123,7 +126,7 @@ def debugADD(command, sub=False):
 		return ",".join([ debugADD(x, True) for x in command.exprs])
 
 	if type(command)==c_ast.BinaryOp:
-		return f"{''.join(debugADD(command.left, True))} {command.op} {''.join(debugADD(command.right, True))}"
+		return f"({''.join(debugADD(command.left, True))} {command.op} {''.join(debugADD(command.right, True))})"
 
 	if type(command)==c_ast.UnaryOp:
 		if sub:
@@ -143,8 +146,16 @@ def debugADD(command, sub=False):
 	if type(command)==str:
 		return command
 
+	if type(command)==c_ast.Struct:
+		return ["//define struct:"+command.name]
+
+	if type(command)==c_ast.StructRef:
+		return "StructRef:"+command.name.name+command.type+command.field.name
+
 
 	if command==None:
+		return ""
+	if type(command)==c_ast.Typename:
 		return ""
 
 
@@ -237,11 +248,11 @@ def debugOutScreen(x, inMethod):
 
 builtInMethods["__debugScreen__"] = debugOutScreen
 
-
 def inputChar(x, inMethod):
 	return ["IN R1, 3"]
 
 builtInMethods["__input__"] = inputChar
+
 
 
 def typeDefi(x, inMethod):
@@ -283,7 +294,11 @@ def forLoopDef(x, inMethod):
 	return coms
 
 def unaryOp(x, inMethod, onItsOwn=True):
+	if type(x)==c_ast.UnaryOp:
+		return ["IMM R1, 1"]
+
 	coms = expression(x.expr, inMethod)
+	
 	if x.op=="-":
 		coms += ["SUB R1, 0, R1"]
 	elif x.op=="p++":
@@ -291,7 +306,14 @@ def unaryOp(x, inMethod, onItsOwn=True):
 	elif x.op=="p--":
 		coms += ["DEC R1, R1"]
 	elif x.op=="&":
-		coms = ["SUB R1, "+mpR+", "+methods.get(x.expr.name, inMethod)]
+		coms = coms[:-1]
+		coms += ["MOV R1, R3"]
+		#coms = ["SUB R1, "+mpR+", "+methods.get(name, inMethod)]
+	elif x.op=="*":
+		coms = coms
+		coms += ["LOAD R1, R1"]
+		#print(coms)
+		#quit()
 	else:
 		print(x)
 		raise NotImplementedError("")
@@ -369,7 +391,18 @@ def assignment(x, inMethod):
 	coms = expression(x.rvalue, inMethod)
 	if x.op=="=":
 		if type(x.lvalue)==c_ast.StructRef:
-			se = setVariableMemoryAddress(x.lvalue.name.name+"."+x.lvalue.field.name, inMethod)
+			if x.lvalue.type=="->":
+				strRef = x.lvalue
+				structDef = structs[ptrToStruct[strRef.name.name]]
+				fieldOffset = [x for x in range(len(structDef)) if structDef[x][0]==strRef.field.name][0]
+				se = getVariableMemoryPtr(strRef.name.name, inMethod)+["LOAD R3, R3","SUB R3, R3, "+str(fieldOffset), "STORE R3, R1"]
+
+			elif x.lvalue.type==".":
+				se = setVariableMemoryAddress(x.lvalue.name.name+"."+x.lvalue.field.name, inMethod)
+			else:
+				print(x.lvalue)
+				raise NotImplementedError("")
+			
 
 		elif type(x.lvalue)==c_ast.ArrayRef:
 			if x.lvalue.subscript != c_ast.Constant:
@@ -383,7 +416,10 @@ def assignment(x, inMethod):
 			else:
 				se = setVariableMemoryAddress(x.lvalue.name.name+"."+x.lvalue.subscript.value, inMethod)
 		else:
-			se = setVariableMemoryAddress(x.lvalue.name, inMethod)
+			if type(x.lvalue)==c_ast.UnaryOp and x.lvalue.op=="*":
+				se = ["PSH R1"]+expression(x.lvalue.expr, inMethod)+["POP R2", "STORE R1, R2"]
+			else:
+				se = setVariableMemoryAddress(x.lvalue.name, inMethod)
 
 		if type(se[0])==list:
 			for x in se:
@@ -415,7 +451,11 @@ def setVariableMemoryAddress(varName, inMethod):
 	if inMethod and methods.isIn(varName, inMethod):
 		return ["SUB R3, "+mpR+", "+methods.get(varName, inMethod),"STORE R3, R1"]
 	elif inMethod and any([x.split(".")[0]==varName for x in methods.methods[inMethod]]):
-		varsNeede = [setVariableMemoryAddress(x, inMethod) for x in methods.methods[inMethod] if x.split(".")[0]==varName]
+		varsNeede = []
+		for x in methods.methods[inMethod]:
+			if x.split(".")[0]==varName:
+				varsNeede += setVariableMemoryAddress(x, inMethod)
+
 		return varsNeede
 	else:
 		return ["STORE "+str(varsInMemory.index(varName))+", R1"]
@@ -426,9 +466,24 @@ def getVariableMemoryAddress(varName, inMethod):
 	elif inMethod and any([x.split(".")[0]==varName for x in methods.methods[inMethod]]):
 		#varsNeede = [getVariableMemoryAddress(x, inMethod) for x in methods.methods[inMethod] if x.split(".")[0]==varName]
 		#if methods.getType(varName, inMethod)=="array":
+		if methods.isIn(varName+".0", inMethod):
+			return ["SUB R3, "+mpR+", "+methods.get(varName+".0", inMethod)]
+		else:
+			raise NotImplementedError()
+		
 		return ["SUB R3, "+mpR+", "+methods.get(varName, inMethod)]#varsNeede
 	else:
 		return ["LOAD R1, "+str(varsInMemory.index(varName))]
+
+def getVariableMemoryPtr(varName, inMethod):
+	if inMethod and methods.isIn(varName, inMethod):
+		return ["SUB R3, "+mpR+", "+methods.get(varName, inMethod)]
+	#elif inMethod and any([x.split(".")[0]==varName for x in methods.methods[inMethod]]):
+	#	return ["SUB R3, "+mpR+", "+methods.get(varName, inMethod)]
+	else:
+		return ["IMM R3, "+str(varsInMemory.index(varName))]
+
+
 
 
 def funcDef(x, inMethod):
@@ -469,52 +524,83 @@ def declare(c, inMethod):
 	varsWeDeclare = []
 	if type(c.type)==c_ast.TypeDecl:
 		if type(c.type.type)==c_ast.Struct:
-			print("STRUCT NAME POINTER REWRITE")
-			quit()
-			
+			code = []
 			structdefinition = structs[c.type.type.name]
 
+			#if inMethod:
+			#	methods.append(c.name, inMethod, "StructPointer")
+			#else:
+			#	varsWeDeclare.append(c.name)
+			
+			if type(c)==c_ast.PtrDecl:
+				name = c.type.declname
+				init = None
+				ptrToStruct[c.type.declname] = c.type.type.name
+			else:
+				ptrToStruct[c.name] = c.type.type.name
+				name = c.name
+				init = c.init
+
+
+
+
 			for x in structdefinition:
+				varsWeDeclare.append(name+"."+x[0])
 				if "const" in c.quals:
-					constants.append(c.name+"."+x[0])
-
-				varsWeDeclare.append(c.name+"."+x[0])
-				if inMethod:
-					methods.append(c.name+"."+x[0], inMethod, "Struct")
+					constants.append(name+"."+x[0])
+				elif inMethod:
+					methods.append(name+"."+x[0], inMethod, "Struct")
 				else:
-					varsInMemory.append(c.name+"."+x[0])
+					varsInMemory.append(name+"."+x[0])
 
-			code = []
-			if c.init is not None:
-				codeExpr = expression(c.init, inMethod)
+			if type(c)==c_ast.PtrDecl:
+				code += getVariableMemoryPtr(name+"."+structdefinition[0][0], inMethod)+["MOV R1, R3"]
+				code += setVariableMemoryAddress(name, inMethod)
+				
+			if init is not None:
+				codeExpr = expression(init, inMethod)
 				for x in range(len(structdefinition)):
-					varName = c.name+"."+structdefinition[x][0]
+					varName = name+"."+structdefinition[x][0]
 					code += codeExpr[x]+setVariableMemoryAddress(varName, inMethod)
 			return code, varsWeDeclare
 
 		elif type(c.type.type) == c_ast.IdentifierType and c.type.type.names[0]=="char":
-			if "const" in c.quals:
-				constants.append(c.name)
-
-			varsWeDeclare.append(c.name)
-			if inMethod:
-				methods.append(c.name, inMethod, "char")
+			if type(c)==c_ast.PtrDecl:
+				name = c.type.declname
+				init = None
 			else:
-				varsInMemory.append(c.name)
-			if c.init is not None:
-				return expression(c.init, inMethod)+setVariableMemoryAddress(c.name, inMethod), varsWeDeclare
+				name = c.name
+				init = c.init
+
+
+			if "const" in c.quals:
+				constants.append(name)
+
+			varsWeDeclare.append(name)
+			if inMethod:
+				methods.append(name, inMethod, "char")
+			else:
+				varsInMemory.append(c.type.declname)
+			if init is not None:
+				return expression(init, inMethod)+setVariableMemoryAddress(name, inMethod), varsWeDeclare
 
 		elif type(c.type.type) == c_ast.IdentifierType and c.type.type.names[0]=="int":
-			if "const" in c.quals:
-				constants.append(c.name)
-
-			varsWeDeclare.append(c.name)
-			if inMethod:
-				methods.append(c.name, inMethod, "int")
+			if type(c)==c_ast.PtrDecl:
+				name = c.type.declname
+				init = None
 			else:
-				varsInMemory.append(c.name)
-			if c.init is not None:
-				return expression(c.init, inMethod)+setVariableMemoryAddress(c.name, inMethod), varsWeDeclare
+				name = c.name
+				init = c.init
+
+			if "const" in c.quals:
+				constants.append(name)
+			varsWeDeclare.append(name)
+			if inMethod:
+				methods.append(name, inMethod, "int")
+			else:
+				varsInMemory.append(name)
+			if init is not None:
+				return expression(init, inMethod)+setVariableMemoryAddress(name, inMethod), varsWeDeclare
 		else:
 			print(c)
 			raise NotImplementedError()
@@ -533,11 +619,10 @@ def declare(c, inMethod):
 
 
 			elif type(c.type.dim)==c_ast.ID and (c.type.dim.name not in constants):
-				print("CANT DYNAMICALLY ALLOCATE ARRAY SIZE RIGHT NOW AND IT WOULD BE SUPER EXPENSIVE")
 				print("Just use malloc 4HEad")
 				quit()
 			elif type(c.type.dim)==c_ast.Constant or (c.type.dim.name in constants):
-				initLen = len(c.type.dim.value)
+				initLen = int(c.type.dim.value)
 				arrayLen = int(c.type.dim.value)
 
 
@@ -555,7 +640,7 @@ def declare(c, inMethod):
 				for x in range(arrayLen):
 					varsInMemory.append(arrayName+"."+str(x))
 					varsWeDeclare.append(arrayName+"."+str(x))
-
+#
 			if "const" in c.quals:
 				constants.append(arrayName)
 			varsWeDeclare.append(arrayName)
@@ -566,7 +651,7 @@ def declare(c, inMethod):
 				varsInMemory.append(arrayName)
 				code += ["IMM R3, "+str(varsInMemory.index(arrayName+".0")), "IMM R2, "+str(varsInMemory.index(arrayName)), "STORE R2, R3"]
 
-			
+
 			if c.init:
 				if type(c.init)==c_ast.Constant and c.init.type=="string":
 					v = c.init.value.replace('"','').replace("\\n","\n").replace("\\b","\b")
@@ -597,7 +682,6 @@ def declare(c, inMethod):
 
 	elif type(c.type)==c_ast.Struct:
 		c = c.type
-		
 		structs[c.name] = []
 		for x in c.decls:
 			if type(x.type)==c_ast.TypeDecl:
@@ -611,21 +695,26 @@ def declare(c, inMethod):
 			structs[c.name].append(d)
 
 	elif type(c.type)==c_ast.PtrDecl:
-		if "const" in c.quals:
-			constants.append(c.name)
 
-		varsWeDeclare.append(c.name)
-		if inMethod:
-			methods.append(c.name, inMethod, "PtrDecl"+"_"+c.type.type.type.names[0])
-		else:
-			varsInMemory.append(c.name)
+		#varsWeDeclare.append(c.name)
+		#if "const" in c.quals:
+		#	constants.append(c.name)
+		#elif inMethod:
+		#	methods.append(c.name, inMethod, "PtrDecl")
+		#else:
+		#	varsInMemory.append(c.name)
 
+		code,vwd = declare(c.type, inMethod)
+
+		
 		if c.init is not None:
 			if inMethod and methods.isIn(c.name, inMethod):
-				return expression(c.init, inMethod)+["SUB R2, "+mpR+", "+methods.get(c.name, inMethod), "STORE R2, R1"], varsWeDeclare
+				#print(code,vwd,expression(c.init, inMethod))
+				return code+expression(c.init, inMethod)+["SUB R2, "+mpR+", "+methods.get(c.name, inMethod), "STORE R2, R1"], varsWeDeclare+vwd
 			else:
-				return expression(c.init, inMethod)+["STORE "+str(varsInMemory.index(c.name))+", R1"], varsWeDeclare
-
+				return code+expression(c.init, inMethod)+["STORE "+str(varsInMemory.index(c.name))+", R1"], varsWeDeclare+vwd
+		else:
+			return code, vwd
 
 	else:
 		print(c)
@@ -670,12 +759,15 @@ def expression(expr, inMethod):
 		return coms
 	elif type(expr)==c_ast.ID:
 		return getVariableMemoryAddress(expr.name, inMethod)
+
+
 	elif type(expr)==c_ast.StructRef:
 		if expr.type=="->":
-			print(methods.methods)
-			print(expr)
-			raise NotImplementedError("")
-			return getVariableMemoryAddress(expr.name.name+"."+expr.field.name, inMethod)
+			structDef = structs[ptrToStruct[expr.name.name]]
+			fieldOffset = [x for x in range(len(structDef)) if structDef[x][0]==expr.field.name][0]
+
+			coms = getVariableMemoryAddress(expr.name.name, inMethod)+["SUB R3, R1, "+str(fieldOffset), "LOAD R1, R3"]
+			return coms
 		elif expr.type==".":
 			return getVariableMemoryAddress(expr.name.name+"."+expr.field.name, inMethod)
 		else:
@@ -688,10 +780,6 @@ def expression(expr, inMethod):
 			return expression(expr.subscript, inMethod)+["SUB R3, "+mpR+", "+methods.get(expr.name.name, inMethod), "LOAD R3, R3", "ADD R3, R3, R1", "LOAD R1, R3"]
 		else:
 			return expression(expr.subscript, inMethod)+["LOAD R3, "+str(varsInMemory.index(expr.name.name)), "ADD R3, R3, R1", "LOAD R1, R3"]
-
-
-
-
 		
 	else:
 		print(expr)
@@ -716,13 +804,12 @@ def binaryOp(binOp, inMethod, lazyTarget = None):
 	preCalcOps = ["/","+","-","*","%","==","!=","<=",">=","<",">"]
 	
 	if type(left)==c_ast.Constant and type(right)==c_ast.Constant and op in preCalcOps:
-		op = op.replace("/","//")
+		op = op.replace("/","//").replace("!","not ")
 		result = str(eval((str(left.value)+op+str(right.value))))
 		result = result.replace("True","1")
 		result = result.replace("False","0")
 		
-		return ["IMM, R1, "+result]
-
+		return ["IMM R1, "+result]
 
 	if op=="+":
 		out.append("ADD R1, R2, R3")
@@ -878,25 +965,23 @@ def peepHoleCopy(asm, only_uncomment):
 	x = 0
 	while x < len(asm):
 		testComm = [g.replace(",","") for g in asm[x].split(" ")]
-		if len(testComm)>1 and testComm[0] not in ["PSH","POP","OUT","IN"]+branchingComms:
+		if len(testComm)>1 and testComm[0] not in ["PSH","POP","OUT","IN","LOAD","STORE"]+branchingComms:
 			
 			for y in range(x+1, len(asm)):
 				comm = [g.replace(",","") for g in asm[y].split(" ")]
 
-				if comm[0] in branchingComms or comm[0].startswith("."):
+				if comm[0] in branchingComms or comm[0].startswith(".") or comm[0].startswith("//") or comm[0].startswith("\n//"):
 					break
 
 
 				if len(comm)>1:
 					if asm[y]==asm[x]:
 						print(">",testComm)
-						#print(asm[x+1:y])
 						print("REMOVING:",comm)
 	
 						if only_uncomment:
 							asm[y] = "//"+asm[y]
 						else:
-							
 							del asm[y]
 							x -= 1
 						break
