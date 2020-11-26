@@ -9,12 +9,14 @@
 #include "libs/arrayUtil.c"
 #include "libs/iso646.h"
 #include "libs/math.c"
+#include "libs/virtualFS.c"
 
 char help_string[] = "HELP\nCALC\nCL\nP\nQ\n";
 char commNotFound[] = "COMM\nNOT\nFOUND\nTRY\nHELP\n";
 char helpComm[] = "HELP";
 char calcComm[] = "CALC";
 char clComm[] = "CL";
+char lsComm[] = "LS";
 char startUp[] = "STARTING...\n";
 char hw[] = "HELLO\nWORLD\n";
 
@@ -53,7 +55,7 @@ void calculator() {
 void main(){
 	int foundComm = 0;
 
-	init();
+	//init();
 	clear_screen();
 
 	printString(startUp);
@@ -76,19 +78,23 @@ void main(){
 			printString(hw);
 			foundComm = 1;
 		}
-		if(strCmp(comm, clComm)==1){
+		if(strcmp(comm, clComm)==1){
 			clear_screen();
 			foundComm = 1;
 		}
-		if(strCmp(comm, helpComm)==1){
+		if(strcmp(comm, helpComm)==1){
 			printString(help_string);
 			foundComm = 1;
 		}
-		if(strCmp(comm, calcComm)==1){
+		if(strcmp(comm, calcComm)==1){
 			calculator();
 			foundComm = 1;
 		}
-
+		if(strcmp(comm, lsComm)==1){
+			ls();
+			foundComm = 1;
+		}
+		
 		for(;nChars!=0;nChars--){
 			comm[nChars] = 0;
 			foundComm = 1;

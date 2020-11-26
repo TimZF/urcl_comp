@@ -1,4 +1,7 @@
-int modulo_divide(int* divRes, int* modRes, int a, int b){
+#define __MATH
+
+
+void modulo_divide(int* divRes, int* modRes, int a, int b){
 	__asm__(b, "MOV R2, R1");
 	__asm__(a);
 	__asm__("MOV R3, R2", "IMM R2, 0");
@@ -19,7 +22,7 @@ int modulo_divide(int* divRes, int* modRes, int a, int b){
 
 
 
-int divide(int* res, int a, int b){
+void divide(int* res, int a, int b){
 	__asm__(b, "MOV R2, R1");
 	__asm__(a);
 	__asm__("MOV R3, R2", "IMM R2, 0");
@@ -33,7 +36,7 @@ int divide(int* res, int a, int b){
 
 
 
-int modulo(int* res, int a, int b){
+void modulo(int* res, int a, int b){
 	__asm__(b, "MOV R2, R1");
 	__asm__(a);
 	__asm__("MOV R3, R2", "IMM R2, 0");

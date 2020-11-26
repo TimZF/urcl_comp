@@ -2,75 +2,87 @@
 #define maxAddress 16380
 #define maxHeapSize 10000
 
-int* head;
+
+struct mallocStruct
+{
+	int size;
+	int* next;
+	int* prev;
+	int free;
+};
+
+#define mallocStruct struct mallocStruct
+
+
+mallocStruct* head;
 
 void init(){
 	//size,next,prev,free
 	head = maxAddress;
-	head[0] = maxHeapSize;
-	head[1] = 0;
-	head[2] = 0;
-	head[3] = 1;
+
+	head->size = maxHeapSize;
+	head->next = 0;
+	head->prev = 0;
+	head->free = 1;
 }
 
 int* malloc(size_t size){
 	if(size<=0){return 0;}
-	int *block;
+	mallocStruct* block;
 	block = head;
 	while(1==1){
-		if (block[3]==1) {if (block[0]>size) {break;}}
+		if (block->free==1) {if (block->size>=size) {break;}}
 
-		if(block[1]==0){return 0;}
+		if(block->next==0){return 0;}
 	
-		block = block[1];
+		block = block->next;
 	}
 
-	int* newBlock;
+	mallocStruct* newBlock;
 	newBlock = block-size-4;
 
-	newBlock[0] = block[0]-size-4;
-	newBlock[1] = 0;
-	newBlock[2] = block;
-	newBlock[3] = 1;
+	newBlock->size = block->size-size-4;
+	newBlock->next = 0;
+	newBlock->prev = block;
+	newBlock->free = 1;
 
-	block[0] = size;
-	block[1] = newBlock;
-	block[3] = 0;
+	block->size = size;
+	block->next = newBlock;
+	block->free = 0;
 	
 	return newBlock+4;
 }
 
 
-
 int* calloc(size_t size, int initVal){
 	if(size<=0){return 0;}
-	int *block;
+	mallocStruct* block;
 	block = head;
-	while(1==1){
-		if (block[3]==1) {if (block[0]>size) {break;}}
 
-		if(block[1]==0){return 0;}
+	while(1==1){
+		if (block->free==1) {if (block->size>=size) {break;}}
+
+		if(block->next==0){return 0;}
 	
-		block = block[1];
+		block = block->next;
 	}
 
-	int* newBlock;
+	mallocStruct* newBlock;
 	newBlock = block-size-4;
 
-	newBlock[0] = block[0]-size-4;
-	newBlock[1] = 0;
-	newBlock[2] = block;
-	newBlock[3] = 1;
+	newBlock->size = block->size-size-4;
+	newBlock->next = 0;
+	newBlock->prev = block;
+	newBlock->free = 1;
 
-	block[0] = size;
-	block[1] = newBlock;
-	block[3] = 0;
+	block->size = size;
+	block->next = newBlock;
+	block->free = 0;
 
 	int startAddress = newBlock+4;
 	for(int x = 0; x<size; x++){
 		startAddress[x] = initVal;
 	}
-
 	
 	return newBlock+4;
 }
@@ -78,46 +90,37 @@ int* calloc(size_t size, int initVal){
 
 
 
-
-
-
-
-
-
-
-
-
-void free(int *posi){
+void free(mallocStruct* posi){
 	posi = posi[-2];
-	posi[3] = 1;
+	posi->free = 1;
 	cleanUp();
 }
 
 void cleanUp(){
-	int *block;
-	int *m;
+	mallocStruct* block;
+	mallocStruct* m;
 	block = head;
-	//seach if theres a block and the next block is blocked and then merge them
+	//seach if theres block free with a following block free and then merge them
 	while(block!=0){
-		if(block[3]==1){
-			m = block[1];
-			if(m[3]==1){
-				block[0] = block[0]+m[0]+4;
-				block[1] = m[1];
-				block = block[2];
+		if(block->free==1){
+			m = block->next;
+			if(m->free==1){
+				block->size = block->size+m->size+4;
+				block->next = m->next;
+				block = block->prev;
 			}
 		}
-		block = block[1];
+		block = block->next;
 	}
 }
 
-int* realloc(int *posi, size_t newSize){
+int* realloc(mallocStruct* posi, size_t newSize){
 	if(newSize<=0){return 0;}
 	posi = posi[-2];
-	if(posi[0]>newSize){posi = posi[1];return posi+4;}
+	if(posi->size>newSize){posi = posi->next;return posi+4;}
 
 	//free old
-	posi[3] = 1;
+	posi->free = 1;
 	cleanUp();
 	//alloc new size
 	return malloc(newSize);
@@ -127,8 +130,8 @@ int* realloc(int *posi, size_t newSize){
 
 
 
-
 /*
+
 test2(int *arr, int size){
 	__debugInt__(size);
 	for(int x=0;x<size;x++){

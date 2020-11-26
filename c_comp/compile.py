@@ -1,11 +1,12 @@
 from pycparser import c_parser, c_ast, preprocess_file
+import peepholeOptim
 
 fileToCompile = "test.c"
 mpR = "R15"
 initFunc = "main"
 debugComments = True
 onlyUncommentOptims = False
-
+#harvardArchitecture = True #need to implement offset
 
 
 urclEx = True
@@ -13,7 +14,7 @@ urclEx = True
 
 
 
-branchingComms = ["CAL","RET","BRA","BRC","BNC","BRZ","BNZ","BRN","BRP","BRL","BRG","BRE","BNE","BOD","BEV","BLE","BGE"]
+
 varsInMemory = []
 constants = []
 
@@ -41,9 +42,11 @@ class MethodsVarHolder():
 		self.methods[method] = []
 
 	def append(self, varName, inMethod, typee):
+		if type(inMethod)==list:
+			inMethod = inMethod[-1]
 		if inMethod:
 			if varName in self.methods[inMethod]:
-				raise NotImplementedError("VARIABLE ALREADY DEFINED IN THIS SCOPE")
+				raise NotImplementedError(f"VARIABLE {varName} ALREADY DEFINED IN THIS SCOPE {inMethod}")
 			self.methods[inMethod].append(varName)
 		self.types[inMethod+"."+varName] = typee
 
@@ -51,9 +54,13 @@ class MethodsVarHolder():
 		return self.types[inMethod+"."+varName]
 
 	def isIn(self, var, inMethod):
+		if type(inMethod)==list:
+			return any([var in self.methods[x] for x in inMethod])
 		return (var in self.methods[inMethod])
 
 	def get(self, var, inMethod):
+		if type(inMethod)==list:
+			return [str(self.methods[x].index(var)) for x in inMethod if self.isIn(var, x)][-1]
 		return str(self.methods[inMethod].index(var))
 
 methods = MethodsVarHolder()
@@ -102,6 +109,9 @@ def debugADD(command, sub=False):
 	if type(command)==c_ast.Return:
 		return [add+"Return "+"".join(debugADD(command.expr))]
 
+	if type(command)==c_ast.Typedef:
+		return ["define type:"+command.name+" = "+"".join(debugADD(command.type))]
+
 	if type(command)==c_ast.FuncCall:
 		if sub:
 			return add+"FuncCall "+command.name.name+"("+debugADD(command.args, True)+")"
@@ -109,7 +119,6 @@ def debugADD(command, sub=False):
 
 
 	if type(command)==c_ast.DeclList:
-		print(command)
 		return "".join([debugADD(x,True) for x in command.decls])
 
 
@@ -151,6 +160,12 @@ def debugADD(command, sub=False):
 
 	if type(command)==c_ast.StructRef:
 		return "StructRef:"+command.name.name+command.type+command.field.name
+
+	if type(command)==c_ast.Compound:
+		return ["\n//{"+"".join([str(debugADD(x,True)) for x in command.block_items])+"}"]
+		print(command)
+
+		quit()
 
 
 	if command==None:
@@ -226,6 +241,8 @@ def compound(ast, inMethod = None, inLoop = None):
 				coms += ["BRA "+inLoop[1]]
 			else:
 				raise Exception("CANT BREAK OUTSIDE OF LOOPS")
+		elif type(x) is c_ast.Compound:
+			coms += create_compund(x, inMethod)
 		else:
 
 			print(x)
@@ -294,13 +311,12 @@ def forLoopDef(x, inMethod):
 	return coms
 
 def unaryOp(x, inMethod, onItsOwn=True):
-	if type(x)==c_ast.UnaryOp:
-		return ["IMM R1, 1"]
-
 	coms = expression(x.expr, inMethod)
 	
 	if x.op=="-":
 		coms += ["SUB R1, 0, R1"]
+	elif x.op=="~":
+		coms += ["NOT R1, R1"]
 	elif x.op=="p++":
 		coms += ["INC R1, R1"]
 	elif x.op=="p--":
@@ -312,8 +328,6 @@ def unaryOp(x, inMethod, onItsOwn=True):
 	elif x.op=="*":
 		coms = coms
 		coms += ["LOAD R1, R1"]
-		#print(coms)
-		#quit()
 	else:
 		print(x)
 		raise NotImplementedError("")
@@ -331,7 +345,6 @@ def whileDef(x, inMethod):
 	
 	skipId += 1
 	coms = condCheck(x.cond, inMethod, skipEnd)
-	
 	coms = [skipStart]+coms+compound(x.stmt, inMethod, [skipContinue,skipEnd])+["BRA "+skipStart, skipEnd]
 	return coms
 
@@ -351,21 +364,22 @@ def condCheck(x, inMethod, skipToo):
 			coms += ["BRZ "+skipToo]
 		else:
 			coms = expression(x, inMethod)
-			if x.op==">":
-				coms += ["BRZ "+skipToo, "BRN "+skipToo]
-			elif x.op=="<":
-				coms += ["BRP "+skipToo, "BRZ "+skipToo]
-			elif x.op==">=":
-				coms += ["BRN "+skipToo]
-			elif x.op=="=<":
-				coms += ["BRP "+skipToo]
-			elif x.op=="==":
-				coms += ["BNZ "+skipToo]
-			elif x.op=="!=":
-				coms += ["BRZ "+skipToo]
-			else:
-				print(x)
-				raise NotImplementedError("")
+			coms += ["BRZ "+skipToo]
+			#if x.op==">":
+			#	coms += ["BRZ "+skipToo, "BRN "+skipToo]
+			#elif x.op=="<":
+			#	coms += ["BRP "+skipToo, "BRZ "+skipToo]
+			#elif x.op==">=":
+			#	coms += ["BRN "+skipToo]
+			#elif x.op=="<=":
+			#	coms += ["BRP "+skipToo]
+			#elif x.op=="==":
+			#	coms += ["BNZ "+skipToo]
+			#elif x.op=="!=":
+			#	coms += ["BRZ "+skipToo]
+			#else:
+			#	print(x)
+			#	raise NotImplementedError("")
 	return coms
 	#quit()
 
@@ -458,6 +472,7 @@ def setVariableMemoryAddress(varName, inMethod):
 
 		return varsNeede
 	else:
+
 		return ["STORE "+str(varsInMemory.index(varName))+", R1"]
 
 def getVariableMemoryAddress(varName, inMethod):
@@ -482,6 +497,21 @@ def getVariableMemoryPtr(varName, inMethod):
 	#	return ["SUB R3, "+mpR+", "+methods.get(varName, inMethod)]
 	else:
 		return ["IMM R3, "+str(varsInMemory.index(varName))]
+
+
+def create_compund(x, inMethod):
+	namy = inMethod+"_compund_"+str(skipId)
+
+	methods.addMethod(namy)
+
+	body = compound(x.block_items, [inMethod,namy])
+
+	numVars = str(len(methods.methods[namy]))
+
+	coms = ["ADD "+mpR+", "+mpR+", "+numVars]+body+["SUB "+mpR+", "+mpR+", "+numVars+"\n\n"]
+	return coms
+
+	
 
 
 
@@ -531,7 +561,7 @@ def declare(c, inMethod):
 			#	methods.append(c.name, inMethod, "StructPointer")
 			#else:
 			#	varsWeDeclare.append(c.name)
-			
+
 			if type(c)==c_ast.PtrDecl:
 				name = c.type.declname
 				init = None
@@ -541,27 +571,32 @@ def declare(c, inMethod):
 				name = c.name
 				init = c.init
 
-
-
-
-			for x in structdefinition:
-				varsWeDeclare.append(name+"."+x[0])
-				if "const" in c.quals:
-					constants.append(name+"."+x[0])
-				elif inMethod:
-					methods.append(name+"."+x[0], inMethod, "Struct")
-				else:
-					varsInMemory.append(name+"."+x[0])
-
 			if type(c)==c_ast.PtrDecl:
-				code += getVariableMemoryPtr(name+"."+structdefinition[0][0], inMethod)+["MOV R1, R3"]
-				code += setVariableMemoryAddress(name, inMethod)
+				varsWeDeclare.append(name)
+				if "const" in c.quals:
+					constants.append(name)
+				elif inMethod:
+					methods.append(name, inMethod, "Struct")
+				else:
+					varsInMemory.append(name)
+				if init is not None:
+					raise NotImplementedError("Cant init structs directly right now")
+
+			else:
+				for x in structdefinition:
+					varsWeDeclare.append(name+"."+x[0])
+					if "const" in c.quals:
+						constants.append(name+"."+x[0])
+					elif inMethod:
+						methods.append(name+"."+x[0], inMethod, "Struct")
+					else:
+						varsInMemory.append(name+"."+x[0])
 				
-			if init is not None:
-				codeExpr = expression(init, inMethod)
-				for x in range(len(structdefinition)):
-					varName = name+"."+structdefinition[x][0]
-					code += codeExpr[x]+setVariableMemoryAddress(varName, inMethod)
+				if init is not None:
+					codeExpr = expression(init, inMethod)
+					for x in range(len(structdefinition)):
+						varName = name+"."+structdefinition[x][0]
+						code += codeExpr[x]+setVariableMemoryAddress(varName, inMethod)
 			return code, varsWeDeclare
 
 		elif type(c.type.type) == c_ast.IdentifierType and c.type.type.names[0]=="char":
@@ -687,7 +722,7 @@ def declare(c, inMethod):
 			if type(x.type)==c_ast.TypeDecl:
 				d = (x.name,x.type.type.names[0])
 			elif type(x.type)==c_ast.PtrDecl:
-				d = (x.name,x.type.type.type.name)
+				d = (x.name,x.type.type.type.names[0])
 			else:
 				print(c)
 				raise NotImplementedError()
@@ -709,7 +744,6 @@ def declare(c, inMethod):
 		
 		if c.init is not None:
 			if inMethod and methods.isIn(c.name, inMethod):
-				#print(code,vwd,expression(c.init, inMethod))
 				return code+expression(c.init, inMethod)+["SUB R2, "+mpR+", "+methods.get(c.name, inMethod), "STORE R2, R1"], varsWeDeclare+vwd
 			else:
 				return code+expression(c.init, inMethod)+["STORE "+str(varsInMemory.index(c.name))+", R1"], varsWeDeclare+vwd
@@ -764,9 +798,12 @@ def expression(expr, inMethod):
 	elif type(expr)==c_ast.StructRef:
 		if expr.type=="->":
 			structDef = structs[ptrToStruct[expr.name.name]]
-			fieldOffset = [x for x in range(len(structDef)) if structDef[x][0]==expr.field.name][0]
 
-			coms = getVariableMemoryAddress(expr.name.name, inMethod)+["SUB R3, R1, "+str(fieldOffset), "LOAD R1, R3"]
+			fieldOffset = [x for x in range(len(structDef)) if structDef[x][0]==expr.field.name]
+			if len(fieldOffset)==0:
+				raise NameError(f"The struct: {expr.name.name} does not have a field: {expr.field.name}" )
+
+			coms = getVariableMemoryAddress(expr.name.name, inMethod)+["ADD R3, R1, "+str(fieldOffset[0]), "LOAD R1, R3"]
 			return coms
 		elif expr.type==".":
 			return getVariableMemoryAddress(expr.name.name+"."+expr.field.name, inMethod)
@@ -791,8 +828,18 @@ def binaryOp(binOp, inMethod, lazyTarget = None):
 	left = binOp.left
 	right = binOp.right
 
+	preCalcOps = ["/","+","-","*","%","==","!=","<=",">=","<",">"]
+
+	if type(left)==c_ast.Constant and type(right)==c_ast.Constant and op in preCalcOps:
+		op = op.replace("/","//").replace("!","not ")
+		result = str(eval((str(left.value)+op+str(right.value))))
+		result = result.replace("True","1")
+		result = result.replace("False","0")
+		return ["IMM R1, "+result]
 
 	out = []
+	
+
 	out += expression(left, inMethod)+["MOV R2, R1"]
 
 	r = expression(right, inMethod)+["MOV R3, R1"]
@@ -801,28 +848,26 @@ def binaryOp(binOp, inMethod, lazyTarget = None):
 	else:
 		out += r
 
-	preCalcOps = ["/","+","-","*","%","==","!=","<=",">=","<",">"]
-	
-	if type(left)==c_ast.Constant and type(right)==c_ast.Constant and op in preCalcOps:
-		op = op.replace("/","//").replace("!","not ")
-		result = str(eval((str(left.value)+op+str(right.value))))
-		result = result.replace("True","1")
-		result = result.replace("False","0")
-		
-		return ["IMM R1, "+result]
+
+
 
 	if op=="+":
-		out.append("ADD R1, R2, R3")
+		out.append(f"ADD R1, R2, R3")
 	elif op=="*":
-		out.append("MLT R1, R2, R3")
+		out.append(f"MLT R1, R2, R3")
 	elif op=="-":
-		out.append("SUB R1, R2, R3")
+		out.append(f"SUB R1, R2, R3")
 	elif op=="/":
-		out.append("DIV R1, R2, R3")
+		out.append(f"DIV R1, R2, R3")
 	elif op=="&":
-		out.append("AND R1, R2, R3")
+		out.append(f"AND R1, R2, R3")
 	elif op=="|":
-		out.append("OR R1, R2, R3")
+		out.append(f"OR R1, R2, R3")
+	elif op=="<<":
+		out.append(f"BSL R1, R2, R3")
+	elif op==">>":
+		out.append(f"BSR R1, R2, R3")
+
 
 	elif op=="&&":
 		if lazyTarget:
@@ -830,8 +875,8 @@ def binaryOp(binOp, inMethod, lazyTarget = None):
 			r = expression(right, inMethod)+["MOV R3, R1"]
 			out = l+r
 		else:
-			out.append("SETNE R2, R2, 0")
-			out.append("SETNE R3, R3, 0")
+			out.append("SETNE R2, R3, 0")
+			out.append("SETNE R2, R3, 0")
 			out.append("AND R1, R2, R3")
 	elif op=="||":
 		#if lazyTarget:
@@ -839,8 +884,8 @@ def binaryOp(binOp, inMethod, lazyTarget = None):
 		#	r = expression(right, inMethod)+["MOV R3, R1"]
 		#	out = l+r
 		#else:
-		out.append("SETNE R2, R2, 0")
-		out.append("SETNE R3, R3, 0")
+		out.append("SETNE R2, R3, 0")
+		out.append("SETNE R2, R3, 0")
 		out.append("OR R1, R2, R3")
 	
 	elif op =="==":
@@ -883,143 +928,15 @@ def binaryOp(binOp, inMethod, lazyTarget = None):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def peepHoleIMM(asm, only_uncomment):
-	modified = False
-	reg = None
-	val = None
-	idx = None
-
-	x = 0
-	while x < len(asm):
-		comm = [x.replace(",","") for x in asm[x].split(" ")]
-		
-		if comm[0] in ["IMM","STORE"]+branchingComms:
-			x+=1
-			continue
-
-		if comm[0]=="IMM":
-			print(">", comm)
-			modified = False
-			reg = comm[1]
-			val = comm[2]
-			idx = x
-
-		if (len(comm)>1 and comm[1]==reg and comm[0]!="IMM") or comm[0].startswith("."):
-			modified = True
-
-		if not modified and (len(comm)>2 and comm[2]==reg):
-			if only_uncomment:
-				asm[idx] = "//"+asm[idx]
-			else:
-				del asm[idx]
-				x-=1
-			comm[2] = val
-			asm[x] = comm[0]+" "+", ".join(comm[1:])
-			print(comm)
-
-		if not modified and (len(comm)>3 and comm[3]==reg):
-			if only_uncomment:
-				asm[idx] = "//"+asm[idx]
-			else:
-				del asm[idx]
-				x-=1
-			comm[3] = val
-			asm[x] = comm[0]+" "+", ".join(comm[1:])
-			print(comm)
-		x+=1
-	return asm
-
-
-
-def peepHoleCopy(asm, only_uncomment):
-	x = 0
-	while x < len(asm):
-		testComm = [g.replace(",","") for g in asm[x].split(" ")]
-		if len(testComm)>1 and testComm[0] not in ["PSH","POP","OUT","IN","LOAD","STORE"]+branchingComms:
-			
-			for y in range(x+1, len(asm)):
-				comm = [g.replace(",","") for g in asm[y].split(" ")]
-
-				if comm[0] in branchingComms or comm[0].startswith(".") or comm[0].startswith("//") or comm[0].startswith("\n//"):
-					break
-
-
-				if len(comm)>1:
-					if asm[y]==asm[x]:
-						print(">",testComm)
-						print("REMOVING:",comm)
-	
-						if only_uncomment:
-							asm[y] = "//"+asm[y]
-						else:
-							del asm[y]
-							x -= 1
-						break
-					elif (comm[0]!="STORE" and any([comm[1]==g for g in testComm[1:]])) or comm[0].startswith("."):
-						break
-		x+=1
-	return asm	
-
-
-def peepHoleSubAddZero(asm, only_uncomment=False):
-	for x in reversed(range(len(asm))):
-		comm = [g.replace(",","") for g in asm[x].split(" ")]
-		if (comm[0]=="SUB" and comm[-1]=="0") or (comm[0]=="ADD" and (comm[-1]=="0" or comm[-2]=="0")):
-			print(">",comm)
-			if (comm[3]==comm[1] or comm[2]==comm[1]):
-				print("REMOVE LINE")
-				if only_uncomment:
-					asm[x] = "//"+asm[x]
-				del asm[x]
-			else:
-				print("REPLACEMENT: MOV "+comm[1]+", "+comm[2])
-				asm[x] = "MOV "+comm[1]+", "+comm[2]
-	return asm
-
-
 def toASM(ast):
 	coms = compound(ast)
 	
 
 	coms = ["IMM "+mpR+", "+str(len(varsInMemory))]+programInitComs+["CAL ._function_"+initFunc,"HLT","HLT","HLT","HLT"]+coms
 
-	print("IMM OPTIM:")
-	coms = peepHoleIMM(coms, onlyUncommentOptims)
-	print("\nSUB/ADD 0 OPTIM:")
-	coms = peepHoleSubAddZero(coms, onlyUncommentOptims)
-	print("\nDOUBLE USE OPTIM:")
-	coms = peepHoleCopy(coms, onlyUncommentOptims)
-	
+	coms = peepholeOptim.optimize(coms, onlyUncommentOptims, initFunc)
+
+
 	return coms
 
 

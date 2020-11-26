@@ -3,55 +3,696 @@ MINREG 15
 MINRAM 1024
 
 
-IMM R15, 0
+IMM R15, 2
+IMM R1, 0
+STORE 1, R1
 CAL ._function_main
 HLT
 HLT
 HLT
 HLT
+//define struct:mallocStruct
+
+//define *head
 
 
-BRA ._function_skip_Main
-._function_Main
-ADD R15, R15, 5
+BRA ._function_skip_init
+._function_init
 
-//define *a[]
-SUB R3, R15, 2
-SUB R2, R15, 3
-STORE R2, R3
-IMM R1, 3
-MOV R3, R15
+//head = 16380
+IMM R1, 16380
+STORE 0, R1
+
+//StructRef:head->size = 10000
+IMM R1, 10000
+IMM R3, 0
+LOAD R3, R3
 STORE R3, R1
-IMM R1, 2
-SUB R3, R15, 1
+
+//StructRef:head->next = 0
+IMM R1, 0
+IMM R3, 0
+LOAD R3, R3
+DEC R3, R3
 STORE R3, R1
+
+//StructRef:head->prev = 0
+IMM R1, 0
+IMM R3, 0
+LOAD R3, R3
+SUB R3, R3, 2
+STORE R3, R1
+
+//StructRef:head->free = 1
 IMM R1, 1
-SUB R3, R15, 2
+IMM R3, 0
+LOAD R3, R3
+SUB R3, R3, 3
+STORE R3, R1
+RET
+._function_skip_init
+
+
+
+
+BRA ._function_skip_malloc
+._function_malloc
+ADD R15, R15, 3
+POP R1
+POP R2
+MOV R3, R15
+STORE R3, R2
+PSH R1
+
+//if((size <= 0))
+MOV R3, R15
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 0
+MOV R3, R1
+SETLE R1, R2, R3
+BRZ ._if_skip_end_0
+
+//Return 0
+IMM R1, 0
+SUB R15, R15, 3
+RET
+._if_skip_end_0
+
+//define *block
+
+//block = head
+LOAD R1, 0
+DEC R3, R15
 STORE R3, R1
 
-//define *pt
-SUB R3, R15, 3
-LOAD R1, R3
-SUB R2, R15, 4
-STORE R2, R1
+//while((1 == 1))
+._while_skip_start_1
+IMM R1, 1
+BRZ ._while_skip_end_1
 
-//*(pt + 1) = 5
-IMM R1, 5
-PSH R1
-SUB R3, R15, 4
+//if((StructRef:block->free == 1))
+DEC R3, R15
+LOAD R1, R3
+ADD R3, R1, 3
 LOAD R1, R3
 MOV R2, R1
 IMM R1, 1
 MOV R3, R1
+SETE R1, R2, R3
+BRZ ._if_skip_end_2
+
+//if((StructRef:block->size >= size))
+DEC R3, R15
+LOAD R1, R3
+MOV R3, R1
+LOAD R1, R3
+MOV R2, R1
+MOV R3, R15
+LOAD R1, R3
+MOV R3, R1
+SETGE R1, R2, R3
+BRZ ._if_skip_end_3
+//break
+BRA ._while_skip_end_1
+._if_skip_end_3
+._if_skip_end_2
+
+//if((StructRef:block->next == 0))
+DEC R3, R15
+LOAD R1, R3
+INC R3, R1
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 0
+MOV R3, R1
+SETE R1, R2, R3
+BRZ ._if_skip_end_4
+
+//Return 0
+IMM R1, 0
+SUB R15, R15, 3
+RET
+._if_skip_end_4
+
+//block = StructRef:block->next
+DEC R3, R15
+LOAD R1, R3
+INC R3, R1
+LOAD R1, R3
+DEC R3, R15
+STORE R3, R1
+BRA ._while_skip_start_1
+._while_skip_end_1
+
+//define *newBlock
+
+//newBlock = ((block - size) - 4)
+DEC R3, R15
+LOAD R1, R3
+MOV R2, R1
+MOV R3, R15
+LOAD R1, R3
+MOV R3, R1
+SUB R1, R2, R3
+MOV R2, R1
+IMM R1, 4
+MOV R3, R1
+SUB R1, R2, R3
+SUB R3, R15, 2
+STORE R3, R1
+
+//StructRef:newBlock->size = ((StructRef:block->size - size) - 4)
+DEC R3, R15
+LOAD R1, R3
+MOV R3, R1
+LOAD R1, R3
+MOV R2, R1
+MOV R3, R15
+LOAD R1, R3
+MOV R3, R1
+SUB R1, R2, R3
+MOV R2, R1
+IMM R1, 4
+MOV R3, R1
+SUB R1, R2, R3
+SUB R3, R15, 2
+LOAD R3, R3
+STORE R3, R1
+
+//StructRef:newBlock->next = 0
+IMM R1, 0
+SUB R3, R15, 2
+LOAD R3, R3
+DEC R3, R3
+STORE R3, R1
+
+//StructRef:newBlock->prev = block
+DEC R3, R15
+LOAD R1, R3
+SUB R3, R15, 2
+LOAD R3, R3
+SUB R3, R3, 2
+STORE R3, R1
+
+//StructRef:newBlock->free = 1
+IMM R1, 1
+SUB R3, R15, 2
+LOAD R3, R3
+SUB R3, R3, 3
+STORE R3, R1
+
+//StructRef:block->size = size
+MOV R3, R15
+LOAD R1, R3
+DEC R3, R15
+LOAD R3, R3
+STORE R3, R1
+
+//StructRef:block->next = newBlock
+SUB R3, R15, 2
+LOAD R1, R3
+DEC R3, R15
+LOAD R3, R3
+DEC R3, R3
+STORE R3, R1
+
+//StructRef:block->free = 0
+IMM R1, 0
+DEC R3, R15
+LOAD R3, R3
+SUB R3, R3, 3
+STORE R3, R1
+
+//Return (newBlock + 4)
+SUB R3, R15, 2
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 4
+MOV R3, R1
 ADD R1, R2, R3
+SUB R15, R15, 3
+RET
+SUB R15, R15, 3
+RET
+._function_skip_malloc
+
+
+
+
+BRA ._function_skip_modulo_divide
+._function_modulo_divide
+ADD R15, R15, 4
+POP R1
+POP R2
+MOV R3, R15
+STORE R3, R2
+POP R2
+DEC R3, R15
+STORE R3, R2
+POP R2
+SUB R3, R15, 2
+STORE R3, R2
+POP R2
+SUB R3, R15, 3
+STORE R3, R2
+PSH R1
+
+//FuncCall __asm__(b,"MOV R2, R1")
+MOV R3, R15
+LOAD R1, R3
+MOV R2, R1
+
+//FuncCall __asm__(a)
+DEC R3, R15
+LOAD R1, R3
+
+//FuncCall __asm__("MOV R3, R2","IMM R2, 0")
+MOV R3, R2
+IMM R2, 0
+
+//FuncCall __asm__("IMM $4, 1","LSH $2, $2","LSH $1, $1","BRC +8","CMP $2, $3")
+IMM $4, 1
+LSH $2, $2
+LSH $1, $1
+BRC +8
+CMP $2, $3
+
+//FuncCall __asm__("BRN +3","SUB $2, $2, $3","INC $1, $1","LSH $4, $4")
+BRN +3
+SUB $2, $2, $3
+INC $1, $1
+LSH $4, $4
+
+//FuncCall __asm__("BRC +4","BRA -9","INC $2, $2","BRA -8")
+BRC +4
+BRA -9
+INC $2, $2
+BRA -8
+
+//FuncCall __asm__("MOV R4, R1",divRes,"STORE R1, R4")
+MOV R4, R1
+SUB R3, R15, 3
+LOAD R1, R3
+STORE R1, R4
+
+//FuncCall __asm__("MOV $1, $2")
+MOV $1, $2
+
+//FuncCall __asm__("BRP +3")
+BRP +3
+
+//FuncCall __asm__("NOT $2, $1")
+NOT $2, $1
+
+//FuncCall __asm__("INC $1, $2")
+INC $1, $2
+
+//FuncCall __asm__("MOV R2, R1",modRes,"STORE R1, R2")
+MOV R2, R1
+SUB R3, R15, 2
+LOAD R1, R3
+STORE R1, R2
+SUB R15, R15, 4
+RET
+._function_skip_modulo_divide
+
+
+
+
+BRA ._function_skip_divide
+._function_divide
+ADD R15, R15, 3
+POP R1
+POP R2
+MOV R3, R15
+STORE R3, R2
+POP R2
+DEC R3, R15
+STORE R3, R2
+POP R2
+SUB R3, R15, 2
+STORE R3, R2
+PSH R1
+
+//FuncCall __asm__(b,"MOV R2, R1")
+MOV R3, R15
+LOAD R1, R3
+MOV R2, R1
+
+//FuncCall __asm__(a)
+DEC R3, R15
+LOAD R1, R3
+
+//FuncCall __asm__("MOV R3, R2","IMM R2, 0")
+MOV R3, R2
+IMM R2, 0
+
+//FuncCall __asm__("IMM $4, 1","LSH $2, $2","LSH $1, $1","BRC +8","CMP $2, $3")
+IMM $4, 1
+LSH $2, $2
+LSH $1, $1
+BRC +8
+CMP $2, $3
+
+//FuncCall __asm__("BRN +3","SUB $2, $2, $3","INC $1, $1","LSH $4, $4")
+BRN +3
+SUB $2, $2, $3
+INC $1, $1
+LSH $4, $4
+
+//FuncCall __asm__("BRC +4","BRA -9","INC $2, $2","BRA -8")
+BRC +4
+BRA -9
+INC $2, $2
+BRA -8
+
+//FuncCall __asm__("MOV R2, R1",res,"STORE R1, R2")
+MOV R2, R1
+SUB R3, R15, 2
+LOAD R1, R3
+STORE R1, R2
+
+//FuncCall __asm__("RET")
+SUB R15, R15, 3
+RET
+SUB R15, R15, 3
+RET
+._function_skip_divide
+
+
+
+
+BRA ._function_skip_digit_count
+._function_digit_count
+ADD R15, R15, 2
+POP R1
+POP R2
+MOV R3, R15
+STORE R3, R2
+PSH R1
+
+//num = ((num << 1) >> 1)
+MOV R3, R15
+LOAD R1, R3
+MOV R2, R1
+LSH R1, R2
+MOV R2, R1
+RSH R1, R2
+MOV R3, R15
+STORE R3, R1
+
+//define count
+IMM R1, 0
+DEC R3, R15
+STORE R3, R1
+
+//if((num < 10))
+MOV R3, R15
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 10
+MOV R3, R1
+SETL R1, R2, R3
+BRZ ._if_skip_end_15
+
+//Return 1
+IMM R1, 1
+SUB R15, R15, 2
+RET
+._if_skip_end_15
+
+//while((num > 0))
+._while_skip_start_16
+MOV R3, R15
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 0
+MOV R3, R1
+SETG R1, R2, R3
+BRZ ._while_skip_end_16
+//count++
+DEC R3, R15
+LOAD R1, R3
+INC R1, R1
+STORE R3, R1
+
+//FuncCall divide(&num,num,10)
+MOV R3, R15
+MOV R1, R3
+PSH R1
+LOAD R1, R3
+PSH R1
+IMM R1, 10
+PSH R1
+CAL ._function_divide
+BRA ._while_skip_start_16
+._while_skip_end_16
+
+//Return count
+DEC R3, R15
+LOAD R1, R3
+SUB R15, R15, 2
+RET
+SUB R15, R15, 2
+RET
+._function_skip_digit_count
+
+
+
+
+BRA ._function_skip_itoa
+._function_itoa
+ADD R15, R15, 5
+POP R1
+POP R2
+MOV R3, R15
+STORE R3, R2
+POP R2
+DEC R3, R15
+STORE R3, R2
+PSH R1
+
+//define dgcount
+DEC R3, R15
+LOAD R1, R3
+PSH R1
+CAL ._function_digit_count
+SUB R3, R15, 2
+STORE R3, R1
+
+//define index
+SUB R3, R15, 2
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 1
+MOV R3, R1
+SUB R1, R2, R3
+SUB R3, R15, 3
+STORE R3, R1
+
+//define x
+
+//if((num == 0))
+DEC R3, R15
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 0
+MOV R3, R1
+SETE R1, R2, R3
+BRZ ._if_skip_end_17
+
+//number[0] = '0'
+IMM R1, '0'
+PSH R1
+IMM R1, 0
+MOV R2, R1
+MOV R3, R15
+LOAD R1, R3
+ADD R1, R1, R2
 POP R2
 STORE R1, R2
 
-//FuncCall __debugInt__(sizeof)
+//number[1] = 0
+IMM R1, 0
+PSH R1
 IMM R1, 1
-OUT 0, R1
+MOV R2, R1
+MOV R3, R15
+LOAD R1, R3
+ADD R1, R1, R2
+POP R2
+STORE R1, R2
+
+//Return 
 SUB R15, R15, 5
 RET
-._function_skip_Main
+._if_skip_end_17
+
+//while((num != 0))
+._while_skip_start_18
+DEC R3, R15
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 0
+MOV R3, R1
+SETNE R1, R2, R3
+BRZ ._while_skip_end_18
+
+//FuncCall modulo_divide(&num,&x,num,10)
+DEC R3, R15
+MOV R1, R3
+PSH R1
+SUB R3, R15, 4
+MOV R1, R3
+PSH R1
+DEC R3, R15
+LOAD R1, R3
+PSH R1
+IMM R1, 10
+PSH R1
+CAL ._function_modulo_divide
+
+//number[index] = (x + '0')
+SUB R3, R15, 4
+LOAD R1, R3
+MOV R2, R1
+IMM R1, '0'
+MOV R3, R1
+ADD R1, R2, R3
+PSH R1
+SUB R3, R15, 3
+LOAD R1, R3
+MOV R2, R1
+MOV R3, R15
+LOAD R1, R3
+ADD R1, R1, R2
+POP R2
+STORE R1, R2
+//index--
+SUB R3, R15, 3
+LOAD R1, R3
+DEC R1, R1
+STORE R3, R1
+BRA ._while_skip_start_18
+._while_skip_end_18
+
+//number[dgcount] = 0
+IMM R1, 0
+PSH R1
+SUB R3, R15, 2
+LOAD R1, R3
+MOV R2, R1
+MOV R3, R15
+LOAD R1, R3
+ADD R1, R1, R2
+POP R2
+STORE R1, R2
+SUB R15, R15, 5
+RET
+._function_skip_itoa
+
+
+
+//define scancode
+
+
+BRA ._function_skip_printString
+._function_printString
+ADD R15, R15, 2
+POP R1
+POP R2
+MOV R3, R15
+STORE R3, R2
+PSH R1
+
+//define x
+IMM R1, 0
+DEC R3, R15
+STORE R3, R1
+
+//while((c[x] != 0))
+._while_skip_start_34
+DEC R3, R15
+LOAD R1, R3
+MOV R3, R15
+LOAD R3, R3
+ADD R3, R3, R1
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 0
+MOV R3, R1
+SETNE R1, R2, R3
+BRZ ._while_skip_end_34
+
+//FuncCall __debugInt__(c[x])
+DEC R3, R15
+LOAD R1, R3
+MOV R3, R15
+LOAD R3, R3
+ADD R3, R3, R1
+LOAD R1, R3
+OUT 0, R1
+
+//FuncCall __debugScreen__(c[x])
+DEC R3, R15
+LOAD R1, R3
+MOV R3, R15
+LOAD R3, R3
+ADD R3, R3, R1
+LOAD R1, R3
+OUT 3, R1
+//x++
+DEC R3, R15
+LOAD R1, R3
+INC R1, R1
+STORE R3, R1
+BRA ._while_skip_start_34
+._while_skip_end_34
+SUB R15, R15, 2
+RET
+._function_skip_printString
+
+
+
+
+BRA ._function_skip_main
+._function_main
+INC R15, R15
+
+//FuncCall init()
+CAL ._function_init
+
+//define *reg
+IMM R1, 10
+PSH R1
+CAL ._function_malloc
+MOV R2, R15
+STORE R2, R1
+
+//FuncCall itoa(34224,reg)
+IMM R1, 34224
+PSH R1
+MOV R3, R15
+LOAD R1, R3
+PSH R1
+CAL ._function_itoa
+
+//FuncCall printString(reg)
+MOV R3, R15
+LOAD R1, R3
+PSH R1
+CAL ._function_printString
+
+//FuncCall __debugInt__(34224)
+IMM R1, 34224
+OUT 0, R1
+
+//FuncCall __debugScreen__('\n')
+IMM R1, 10
+OUT 3, R1
+DEC R15, R15
+RET
+._function_skip_main
 
 

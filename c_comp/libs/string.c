@@ -1,9 +1,16 @@
+#define __STRING
+#ifndef __MATH
+#include "math.c"
+#endif
+
 int digit_count(int num)
 {
+	num = (num<<1)>>1;
 	int count = 0;
-	if(num == 0){
+	if(num<10){
 		return 1;
 	}
+
 	while(num > 0){
 		count++;
 		divide(&num, num, 10);
@@ -15,27 +22,26 @@ int digit_count(int num)
 
 void itoa(int num, char *number)
 {
+	
 	int dgcount = digit_count(num);
-
 	int index = dgcount - 1;
+
 	char x;
 	if(num == 0 ){
-		if (dgcount == 1){
-			number[0] = '0';
-			number[1] = 0;
-			return;
-		}
+		number[0] = '0';
+		number[1] = 0;
+		return;
 	}
-
+	
 	while(num != 0){
 		//x = num % 10;
+		//num = num / 10;
 
 		modulo_divide(&num, &x, num, 10);
-		//modulo(&x, num, 10);
 		number[index] = x + '0';
 		index--;
-		//num = num / 10;
-		//divide(&num, num, 10);
+		
+
 	}
 	number[dgcount] = 0;
 }
@@ -45,7 +51,7 @@ int atoi(char *number)
 {
 	int x = 0;
 	int out = 0;
-	while(number[x]!=NULL){
+	while(number[x]!=0){
 		out = out*10;
 		out = out+(number[x]-'0');
 		x++;
@@ -69,20 +75,20 @@ int strlen(char *c) {
 
 int strcmp(char *c, char *c2) {
 	int x = 0;
-	while (true){
-		if(c[x]!=c2[x]){return false;}
+	while (1){
+		if(c[x]!=c2[x]){return 0;}
 		if(c[x]==0){break;}
 		x++;
 	}
-	return true;
+	return 1;
 }
 
 
 void strcpy(char *c, char *c2) {
 	int x = 0;
-	while (true){
+	while (1){
 		if(c[x]==0){return;}
-		else{c2[x] = c[x]}
+		else{c2[x] = c[x];}
 		x++;
 	}
 }
