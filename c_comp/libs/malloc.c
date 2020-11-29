@@ -16,7 +16,7 @@ struct mallocStruct
 
 mallocStruct* head;
 
-void init(){
+void initMalloc(){
 	//size,next,prev,free
 	head = maxAddress;
 

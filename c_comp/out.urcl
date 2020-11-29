@@ -3,9 +3,17 @@ MINREG 15
 MINRAM 1024
 
 
-IMM R15, 2
+IMM R15, 14
 IMM R1, 0
 STORE 1, R1
+strLoad 2, "5678"
+IMM R3, 2
+IMM R2, 7
+STORE R2, R3
+strLoad 8, "1234"
+IMM R3, 8
+IMM R2, 13
+STORE R2, R3
 CAL ._function_main
 HLT
 HLT
@@ -16,8 +24,8 @@ HLT
 //define *head
 
 
-BRA ._function_skip_init
-._function_init
+BRA ._function_skip_initMalloc
+._function_initMalloc
 
 //head = 16380
 IMM R1, 16380
@@ -50,278 +58,93 @@ LOAD R3, R3
 SUB R3, R3, 3
 STORE R3, R1
 RET
-._function_skip_init
+._function_skip_initMalloc
 
 
 
 
-BRA ._function_skip_malloc
-._function_malloc
-ADD R15, R15, 3
-POP R1
-POP R2
-MOV R3, R15
-STORE R3, R2
-PSH R1
+BRA ._function_skip_initFS
+._function_initFS
+INC R15, R15
 
-//if((size <= 0))
-MOV R3, R15
-LOAD R1, R3
-MOV R2, R1
+//define x
 IMM R1, 0
-MOV R3, R1
-SETLE R1, R2, R3
-BRZ ._if_skip_end_0
-
-//Return 0
-IMM R1, 0
-SUB R15, R15, 3
-RET
-._if_skip_end_0
-
-//define *block
-
-//block = head
-LOAD R1, 0
-DEC R3, R15
+MOV R3, R15
 STORE R3, R1
 
-//while((1 == 1))
-._while_skip_start_1
-IMM R1, 1
-BRZ ._while_skip_end_1
-
-//if((StructRef:block->free == 1))
-DEC R3, R15
-LOAD R1, R3
-ADD R3, R1, 3
+//for(); (x < 244); x++)
+._for_skip_start_15
+MOV R3, R15
 LOAD R1, R3
 MOV R2, R1
-IMM R1, 1
+IMM R1, 244
 MOV R3, R1
-SETE R1, R2, R3
-BRZ ._if_skip_end_2
+SETL R1, R2, R3
+BRZ ._for_skip_end_15
 
-//if((StructRef:block->size >= size))
-DEC R3, R15
-LOAD R1, R3
-MOV R3, R1
-LOAD R1, R3
+//FuncCall __asm__((0 + x),"OUT 120, R1")
+IMM R1, 0
 MOV R2, R1
 MOV R3, R15
 LOAD R1, R3
-MOV R3, R1
-SETGE R1, R2, R3
-BRZ ._if_skip_end_3
-//break
-BRA ._while_skip_end_1
-._if_skip_end_3
-._if_skip_end_2
-
-//if((StructRef:block->next == 0))
-DEC R3, R15
-LOAD R1, R3
-INC R3, R1
-LOAD R1, R3
-MOV R2, R1
-IMM R1, 0
-MOV R3, R1
-SETE R1, R2, R3
-BRZ ._if_skip_end_4
-
-//Return 0
-IMM R1, 0
-SUB R15, R15, 3
-RET
-._if_skip_end_4
-
-//block = StructRef:block->next
-DEC R3, R15
-LOAD R1, R3
-INC R3, R1
-LOAD R1, R3
-DEC R3, R15
-STORE R3, R1
-BRA ._while_skip_start_1
-._while_skip_end_1
-
-//define *newBlock
-
-//newBlock = ((block - size) - 4)
-DEC R3, R15
-LOAD R1, R3
-MOV R2, R1
-MOV R3, R15
-LOAD R1, R3
-MOV R3, R1
-SUB R1, R2, R3
-MOV R2, R1
-IMM R1, 4
-MOV R3, R1
-SUB R1, R2, R3
-SUB R3, R15, 2
-STORE R3, R1
-
-//StructRef:newBlock->size = ((StructRef:block->size - size) - 4)
-DEC R3, R15
-LOAD R1, R3
-MOV R3, R1
-LOAD R1, R3
-MOV R2, R1
-MOV R3, R15
-LOAD R1, R3
-MOV R3, R1
-SUB R1, R2, R3
-MOV R2, R1
-IMM R1, 4
-MOV R3, R1
-SUB R1, R2, R3
-SUB R3, R15, 2
-LOAD R3, R3
-STORE R3, R1
-
-//StructRef:newBlock->next = 0
-IMM R1, 0
-SUB R3, R15, 2
-LOAD R3, R3
-DEC R3, R3
-STORE R3, R1
-
-//StructRef:newBlock->prev = block
-DEC R3, R15
-LOAD R1, R3
-SUB R3, R15, 2
-LOAD R3, R3
-SUB R3, R3, 2
-STORE R3, R1
-
-//StructRef:newBlock->free = 1
-IMM R1, 1
-SUB R3, R15, 2
-LOAD R3, R3
-SUB R3, R3, 3
-STORE R3, R1
-
-//StructRef:block->size = size
-MOV R3, R15
-LOAD R1, R3
-DEC R3, R15
-LOAD R3, R3
-STORE R3, R1
-
-//StructRef:block->next = newBlock
-SUB R3, R15, 2
-LOAD R1, R3
-DEC R3, R15
-LOAD R3, R3
-DEC R3, R3
-STORE R3, R1
-
-//StructRef:block->free = 0
-IMM R1, 0
-DEC R3, R15
-LOAD R3, R3
-SUB R3, R3, 3
-STORE R3, R1
-
-//Return (newBlock + 4)
-SUB R3, R15, 2
-LOAD R1, R3
-MOV R2, R1
-IMM R1, 4
 MOV R3, R1
 ADD R1, R2, R3
-SUB R15, R15, 3
-RET
-SUB R15, R15, 3
-RET
-._function_skip_malloc
+OUT 120, R1
 
-
-
-
-BRA ._function_skip_modulo_divide
-._function_modulo_divide
-ADD R15, R15, 4
-POP R1
-POP R2
+//FuncCall __asm__("OUT 124, 0")
+OUT 124, 0
+._for_skip_continue_15
+//x++
 MOV R3, R15
-STORE R3, R2
-POP R2
-DEC R3, R15
-STORE R3, R2
-POP R2
-SUB R3, R15, 2
-STORE R3, R2
-POP R2
-SUB R3, R15, 3
-STORE R3, R2
-PSH R1
+LOAD R1, R3
+INC R1, R1
+STORE R3, R1
+BRA ._for_skip_start_15
+._for_skip_end_15
 
-//FuncCall __asm__(b,"MOV R2, R1")
+//x = 0
+IMM R1, 0
+MOV R3, R15
+STORE R3, R1
+
+//for(); (x < 244); x++)
+._for_skip_start_15
 MOV R3, R15
 LOAD R1, R3
 MOV R2, R1
+IMM R1, 244
+MOV R3, R1
+SETL R1, R2, R3
+BRZ ._for_skip_end_15
 
-//FuncCall __asm__(a)
-DEC R3, R15
-LOAD R1, R3
-
-//FuncCall __asm__("MOV R3, R2","IMM R2, 0")
-MOV R3, R2
-IMM R2, 0
-
-//FuncCall __asm__("IMM $4, 1","LSH $2, $2","LSH $1, $1","BRC +8","CMP $2, $3")
-IMM $4, 1
-LSH $2, $2
-LSH $1, $1
-BRC +8
-CMP $2, $3
-
-//FuncCall __asm__("BRN +3","SUB $2, $2, $3","INC $1, $1","LSH $4, $4")
-BRN +3
-SUB $2, $2, $3
-INC $1, $1
-LSH $4, $4
-
-//FuncCall __asm__("BRC +4","BRA -9","INC $2, $2","BRA -8")
-BRC +4
-BRA -9
-INC $2, $2
-BRA -8
-
-//FuncCall __asm__("MOV R4, R1",divRes,"STORE R1, R4")
-MOV R4, R1
-SUB R3, R15, 3
-LOAD R1, R3
-STORE R1, R4
-
-//FuncCall __asm__("MOV $1, $2")
-MOV $1, $2
-
-//FuncCall __asm__("BRP +3")
-BRP +3
-
-//FuncCall __asm__("NOT $2, $1")
-NOT $2, $1
-
-//FuncCall __asm__("INC $1, $2")
-INC $1, $2
-
-//FuncCall __asm__("MOV R2, R1",modRes,"STORE R1, R2")
+//FuncCall __asm__((244 + x),"OUT 120, R1")
+IMM R1, 244
 MOV R2, R1
-SUB R3, R15, 2
+MOV R3, R15
 LOAD R1, R3
-STORE R1, R2
-SUB R15, R15, 4
+MOV R3, R1
+ADD R1, R2, R3
+OUT 120, R1
+
+//FuncCall __asm__("OUT 124, 0")
+OUT 124, 0
+._for_skip_continue_15
+//x++
+MOV R3, R15
+LOAD R1, R3
+INC R1, R1
+STORE R3, R1
+BRA ._for_skip_start_15
+._for_skip_end_15
+DEC R15, R15
 RET
-._function_skip_modulo_divide
+._function_skip_initFS
 
 
 
 
-BRA ._function_skip_divide
-._function_divide
+BRA ._function_skip_updateFileInfo
+._function_updateFileInfo
 ADD R15, R15, 3
 POP R1
 POP R2
@@ -335,50 +158,502 @@ SUB R3, R15, 2
 STORE R3, R2
 PSH R1
 
-//FuncCall __asm__(b,"MOV R2, R1")
-MOV R3, R15
-LOAD R1, R3
-MOV R2, R1
-
-//FuncCall __asm__(a)
-DEC R3, R15
-LOAD R1, R3
-
-//FuncCall __asm__("MOV R3, R2","IMM R2, 0")
-MOV R3, R2
-IMM R2, 0
-
-//FuncCall __asm__("IMM $4, 1","LSH $2, $2","LSH $1, $1","BRC +8","CMP $2, $3")
-IMM $4, 1
-LSH $2, $2
-LSH $1, $1
-BRC +8
-CMP $2, $3
-
-//FuncCall __asm__("BRN +3","SUB $2, $2, $3","INC $1, $1","LSH $4, $4")
-BRN +3
-SUB $2, $2, $3
-INC $1, $1
-LSH $4, $4
-
-//FuncCall __asm__("BRC +4","BRA -9","INC $2, $2","BRA -8")
-BRC +4
-BRA -9
-INC $2, $2
-BRA -8
-
-//FuncCall __asm__("MOV R2, R1",res,"STORE R1, R2")
+//FuncCall __asm__((0 + fileId),"OUT 120, R1")
+IMM R1, 0
 MOV R2, R1
 SUB R3, R15, 2
 LOAD R1, R3
-STORE R1, R2
+MOV R3, R1
+ADD R1, R2, R3
+OUT 120, R1
 
-//FuncCall __asm__("RET")
+//FuncCall __asm__(size,"OUT 124, R1")
+DEC R3, R15
+LOAD R1, R3
+OUT 124, R1
+
+//FuncCall __asm__((244 + fileId),"OUT 120, R1")
+IMM R1, 244
+MOV R2, R1
+SUB R3, R15, 2
+LOAD R1, R3
+MOV R3, R1
+ADD R1, R2, R3
+OUT 120, R1
+
+//FuncCall __asm__(addr,"OUT 124, R1")
+MOV R3, R15
+LOAD R1, R3
+OUT 124, R1
 SUB R15, R15, 3
 RET
+._function_skip_updateFileInfo
+
+
+
+
+BRA ._function_skip_readAddr
+._function_readAddr
+ADD R15, R15, 2
+POP R1
+POP R2
+MOV R3, R15
+STORE R3, R2
+PSH R1
+
+//define outVal
+IMM R1, 0
+DEC R3, R15
+STORE R3, R1
+
+//FuncCall __asm__(addr,"OUT 120, R1")
+MOV R3, R15
+LOAD R1, R3
+OUT 120, R1
+
+//FuncCall __asm__(&outVal,"MOV R3, R1","IN R1, 124","STORE, R3, R1")
+DEC R3, R15
+MOV R1, R3
+MOV R3, R1
+IN R1, 124
+STORE, R3, R1
+
+//Return outVal
+DEC R3, R15
+LOAD R1, R3
+SUB R15, R15, 2
+RET
+SUB R15, R15, 2
+RET
+._function_skip_readAddr
+
+
+
+
+BRA ._function_skip_writeAddr
+._function_writeAddr
+ADD R15, R15, 2
+POP R1
+POP R2
+MOV R3, R15
+STORE R3, R2
+POP R2
+DEC R3, R15
+STORE R3, R2
+PSH R1
+
+//FuncCall __asm__(addr,"OUT 120, R1")
+DEC R3, R15
+LOAD R1, R3
+OUT 120, R1
+
+//FuncCall __asm__(val,"OUT 124, R1")
+MOV R3, R15
+LOAD R1, R3
+OUT 124, R1
+SUB R15, R15, 2
+RET
+._function_skip_writeAddr
+
+
+
+
+BRA ._function_skip_getOpenBlock
+._function_getOpenBlock
+INC R15, R15
+
+//for(define x); (x < 16384); ['x = (x + 64)'])
+IMM R1, 488
+MOV R3, R15
+STORE R3, R1
+._for_skip_start_15
+MOV R3, R15
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 16384
+MOV R3, R1
+SETL R1, R2, R3
+BRZ ._for_skip_end_15
+
+//if((FuncCall readAddr(x) >= 0))
+MOV R3, R15
+LOAD R1, R3
+PSH R1
+CAL ._function_readAddr
+MOV R2, R1
+IMM R1, 0
+MOV R3, R1
+SETGE R1, R2, R3
+BRZ ._if_skip_end_15
+
+//Return x
+MOV R3, R15
+LOAD R1, R3
+DEC R15, R15
+RET
+._if_skip_end_15
+._for_skip_continue_15
+
+//x = (x + 64)
+MOV R3, R15
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 64
+MOV R3, R1
+ADD R1, R2, R3
+MOV R3, R15
+STORE R3, R1
+BRA ._for_skip_start_15
+._for_skip_end_15
+DEC R15, R15
+RET
+._function_skip_getOpenBlock
+
+
+
+
+BRA ._function_skip_writePart
+._function_writePart
+ADD R15, R15, 6
+POP R1
+POP R2
+MOV R3, R15
+STORE R3, R2
+POP R2
+DEC R3, R15
+STORE R3, R2
+POP R2
+SUB R3, R15, 2
+STORE R3, R2
+POP R2
+SUB R3, R15, 3
+STORE R3, R2
+PSH R1
+
+//define fileAddr
+IMM R1, 244
+MOV R2, R1
+SUB R3, R15, 3
+LOAD R1, R3
+MOV R3, R1
+ADD R1, R2, R3
+PSH R1
+CAL ._function_readAddr
+SUB R3, R15, 4
+STORE R3, R1
+
+//define x
+IMM R1, 0
+SUB R3, R15, 5
+STORE R3, R1
+
+//for(); (x < offset); x++)
+._for_skip_start_16
+SUB R3, R15, 5
+LOAD R1, R3
+MOV R2, R1
+SUB R3, R15, 2
+LOAD R1, R3
+MOV R3, R1
+SETL R1, R2, R3
+BRZ ._for_skip_end_16
+
+//fileAddr = FuncCall readAddr(fileAddr)
+SUB R3, R15, 4
+LOAD R1, R3
+PSH R1
+CAL ._function_readAddr
+SUB R3, R15, 4
+STORE R3, R1
+._for_skip_continue_16
+//x++
+SUB R3, R15, 5
+LOAD R1, R3
+INC R1, R1
+STORE R3, R1
+BRA ._for_skip_start_16
+._for_skip_end_16
+
+//x = 0
+IMM R1, 0
+SUB R3, R15, 5
+STORE R3, R1
+
+//for(); (x < len); x++)
+._for_skip_start_16
+SUB R3, R15, 5
+LOAD R1, R3
+MOV R2, R1
+MOV R3, R15
+LOAD R1, R3
+MOV R3, R1
+SETL R1, R2, R3
+BRZ ._for_skip_end_16
+
+//FuncCall writeAddr(((fileAddr + x) + 1),data[x])
+SUB R3, R15, 4
+LOAD R1, R3
+MOV R2, R1
+SUB R3, R15, 5
+LOAD R1, R3
+MOV R3, R1
+ADD R1, R2, R3
+MOV R2, R1
+IMM R1, 1
+MOV R3, R1
+ADD R1, R2, R3
+PSH R1
+SUB R3, R15, 5
+LOAD R1, R3
+DEC R3, R15
+LOAD R3, R3
+ADD R3, R3, R1
+LOAD R1, R3
+PSH R1
+CAL ._function_writeAddr
+._for_skip_continue_16
+//x++
+SUB R3, R15, 5
+LOAD R1, R3
+INC R1, R1
+STORE R3, R1
+BRA ._for_skip_start_16
+._for_skip_end_16
+
+//Return (offset + 1)
+SUB R3, R15, 2
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 1
+MOV R3, R1
+ADD R1, R2, R3
+SUB R15, R15, 6
+RET
+SUB R15, R15, 6
+RET
+._function_skip_writePart
+
+
+
+
+BRA ._function_skip_readPart
+._function_readPart
+ADD R15, R15, 7
+POP R1
+POP R2
+MOV R3, R15
+STORE R3, R2
+POP R2
+DEC R3, R15
+STORE R3, R2
+POP R2
+SUB R3, R15, 2
+STORE R3, R2
+POP R2
+SUB R3, R15, 3
+STORE R3, R2
+PSH R1
+
+//define *fileAddr
+IMM R1, 244
+MOV R2, R1
+SUB R3, R15, 3
+LOAD R1, R3
+MOV R3, R1
+ADD R1, R2, R3
+PSH R1
+CAL ._function_readAddr
+SUB R2, R15, 4
+STORE R2, R1
+
+//define *newFileAddr
+
+//define x
+IMM R1, 0
+SUB R3, R15, 6
+STORE R3, R1
+
+//for(); (x < offset); x++)
+._for_skip_start_16
+SUB R3, R15, 6
+LOAD R1, R3
+MOV R2, R1
+SUB R3, R15, 2
+LOAD R1, R3
+MOV R3, R1
+SETL R1, R2, R3
+BRZ ._for_skip_end_16
+
+//fileAddr = FuncCall readAddr(fileAddr)
+SUB R3, R15, 4
+LOAD R1, R3
+PSH R1
+CAL ._function_readAddr
+SUB R3, R15, 4
+STORE R3, R1
+._for_skip_continue_16
+//x++
+SUB R3, R15, 6
+LOAD R1, R3
+INC R1, R1
+STORE R3, R1
+BRA ._for_skip_start_16
+._for_skip_end_16
+
+//x = 0
+IMM R1, 0
+SUB R3, R15, 6
+STORE R3, R1
+
+//for(); (x < len); x++)
+._for_skip_start_16
+SUB R3, R15, 6
+LOAD R1, R3
+MOV R2, R1
+MOV R3, R15
+LOAD R1, R3
+MOV R3, R1
+SETL R1, R2, R3
+BRZ ._for_skip_end_16
+
+//data[x] = FuncCall readAddr(((fileAddr + x) + 1))
+SUB R3, R15, 4
+LOAD R1, R3
+MOV R2, R1
+SUB R3, R15, 6
+LOAD R1, R3
+MOV R3, R1
+ADD R1, R2, R3
+MOV R2, R1
+IMM R1, 1
+MOV R3, R1
+ADD R1, R2, R3
+PSH R1
+CAL ._function_readAddr
+PSH R1
+SUB R3, R15, 6
+LOAD R1, R3
+MOV R2, R1
+DEC R3, R15
+LOAD R1, R3
+ADD R1, R1, R2
+POP R2
+STORE R1, R2
+._for_skip_continue_16
+//x++
+SUB R3, R15, 6
+LOAD R1, R3
+INC R1, R1
+STORE R3, R1
+BRA ._for_skip_start_16
+._for_skip_end_16
+
+//Return (offset + 1)
+SUB R3, R15, 2
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 1
+MOV R3, R1
+ADD R1, R2, R3
+SUB R15, R15, 7
+RET
+SUB R15, R15, 7
+RET
+._function_skip_readPart
+
+
+
+
+BRA ._function_skip_create_file
+._function_create_file
+ADD R15, R15, 3
+
+//define fileId
+IMM R1, 0
+MOV R3, R15
+STORE R3, R1
+
+//for(define x); (x < 244); x++)
+IMM R1, 0
+DEC R3, R15
+STORE R3, R1
+._for_skip_start_16
+DEC R3, R15
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 244
+MOV R3, R1
+SETL R1, R2, R3
+BRZ ._for_skip_end_16
+
+//fileId = FuncCall readAddr(x)
+DEC R3, R15
+LOAD R1, R3
+PSH R1
+CAL ._function_readAddr
+MOV R3, R15
+STORE R3, R1
+
+//if((fileId == 0))
+MOV R3, R15
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 0
+MOV R3, R1
+SETE R1, R2, R3
+BRZ ._if_skip_end_16
+
+//fileId = x
+DEC R3, R15
+LOAD R1, R3
+MOV R3, R15
+STORE R3, R1
+//break
+BRA ._for_skip_end_16
+._if_skip_end_16
+._for_skip_continue_16
+//x++
+DEC R3, R15
+LOAD R1, R3
+INC R1, R1
+STORE R3, R1
+BRA ._for_skip_start_16
+._for_skip_end_16
+
+//define *newBlock
+CAL ._function_getOpenBlock
+SUB R2, R15, 2
+STORE R2, R1
+
+//FuncCall writeAddr(newBlock,((1 << 15) | 0))
+SUB R3, R15, 2
+LOAD R1, R3
+PSH R1
+IMM R1, 1
+MOV R2, R1
+IMM R1, 15
+MOV R3, R1
+BSL R1, R2, R3
+MOV R2, R1
+IMM R1, 0
+MOV R3, R1
+OR R1, R2, R3
+PSH R1
+CAL ._function_writeAddr
+
+//FuncCall updateFileInfo(fileId,1,newBlock)
+MOV R3, R15
+LOAD R1, R3
+PSH R1
+IMM R1, 1
+PSH R1
+SUB R3, R15, 2
+LOAD R1, R3
+PSH R1
+CAL ._function_updateFileInfo
 SUB R15, R15, 3
 RET
-._function_skip_divide
+._function_skip_create_file
 
 
 
@@ -414,56 +689,106 @@ MOV R2, R1
 IMM R1, 10
 MOV R3, R1
 SETL R1, R2, R3
-BRZ ._if_skip_end_15
+BRZ ._if_skip_end_18
 
 //Return 1
 IMM R1, 1
 SUB R15, R15, 2
 RET
-._if_skip_end_15
+._if_skip_end_18
 
 //while((num > 0))
-._while_skip_start_16
+._while_skip_start_19
 MOV R3, R15
+LOAD R1, R3
+STORE R1, R2
+SUB R15, R15, 5
+RET
+._function_skip_itoa
+
+
+
+
+BRA ._function_skip_atoi
+._function_atoi
+ADD R15, R15, 3
+POP R1
+POP R2
+MOV R3, R15
+STORE R3, R2
+PSH R1
+
+//define x
+IMM R1, 0
+DEC R3, R15
+STORE R3, R1
+
+//define out
+IMM R1, 0
+SUB R3, R15, 2
+STORE R3, R1
+
+//while((number[x] != 0))
+._while_skip_start_22
+DEC R3, R15
+LOAD R1, R3
+MOV R3, R15
+LOAD R3, R3
+ADD R3, R3, R1
 LOAD R1, R3
 MOV R2, R1
 IMM R1, 0
 MOV R3, R1
-SETG R1, R2, R3
-BRZ ._while_skip_end_16
-//count++
+SETNE R1, R2, R3
+BRZ ._while_skip_end_22
+
+//out = (out * 10)
+SUB R3, R15, 2
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 10
+MOV R3, R1
+MLT R1, R2, R3
+SUB R3, R15, 2
+STORE R3, R1
+
+//out = (out + (number[x] - '0'))
+SUB R3, R15, 2
+LOAD R1, R3
+MOV R2, R1
+PSH R2
 DEC R3, R15
+LOAD R1, R3
+MOV R3, R15
+LOAD R3, R3
+ADD R3, R3, R1
+SETE R1, R2, R3
+BRZ ._if_skip_end_26
+//break
+BRA ._while_skip_end_24
+._if_skip_end_26
+//x++
+SUB R3, R15, 2
 LOAD R1, R3
 INC R1, R1
 STORE R3, R1
+BRA ._while_skip_start_24
+._while_skip_end_24
 
-//FuncCall divide(&num,num,10)
-MOV R3, R15
-MOV R1, R3
-PSH R1
-LOAD R1, R3
-PSH R1
-IMM R1, 10
-PSH R1
-CAL ._function_divide
-BRA ._while_skip_start_16
-._while_skip_end_16
-
-//Return count
-DEC R3, R15
-LOAD R1, R3
-SUB R15, R15, 2
+//Return 1
+IMM R1, 1
+SUB R15, R15, 3
 RET
-SUB R15, R15, 2
+SUB R15, R15, 3
 RET
-._function_skip_digit_count
+._function_skip_strcmp
 
 
 
 
-BRA ._function_skip_itoa
-._function_itoa
-ADD R15, R15, 5
+BRA ._function_skip_strcpy
+._function_strcpy
+ADD R15, R15, 3
 POP R1
 POP R2
 MOV R3, R15
@@ -473,112 +798,42 @@ DEC R3, R15
 STORE R3, R2
 PSH R1
 
-//define dgcount
-DEC R3, R15
-LOAD R1, R3
-PSH R1
-CAL ._function_digit_count
-SUB R3, R15, 2
-STORE R3, R1
-
-//define index
-SUB R3, R15, 2
-LOAD R1, R3
-MOV R2, R1
-IMM R1, 1
-MOV R3, R1
-SUB R1, R2, R3
-SUB R3, R15, 3
-STORE R3, R1
-
 //define x
+IMM R1, 0
+SUB R3, R15, 2
+STORE R3, R1
 
-//if((num == 0))
+//while(1)
+._while_skip_start_27
+IMM R1, 1
+BRZ ._while_skip_end_27
+
+//if((c[x] == 0))
+SUB R3, R15, 2
+LOAD R1, R3
 DEC R3, R15
+LOAD R3, R3
+ADD R3, R3, R1
 LOAD R1, R3
 MOV R2, R1
 IMM R1, 0
 MOV R3, R1
 SETE R1, R2, R3
-BRZ ._if_skip_end_17
-
-//number[0] = '0'
-IMM R1, '0'
-PSH R1
-IMM R1, 0
-MOV R2, R1
-MOV R3, R15
-LOAD R1, R3
-ADD R1, R1, R2
-POP R2
-STORE R1, R2
-
-//number[1] = 0
-IMM R1, 0
-PSH R1
-IMM R1, 1
-MOV R2, R1
-MOV R3, R15
-LOAD R1, R3
-ADD R1, R1, R2
-POP R2
-STORE R1, R2
+BRZ ._if_skip_false_28
 
 //Return 
-SUB R15, R15, 5
+SUB R15, R15, 3
 RET
-._if_skip_end_17
+BRA ._if_skip_end_28
+._if_skip_false_28
 
-//while((num != 0))
-._while_skip_start_18
+//c2[x] = c[x]
+SUB R3, R15, 2
+LOAD R1, R3
 DEC R3, R15
+LOAD R3, R3
+ADD R3, R3, R1
 LOAD R1, R3
-MOV R2, R1
-IMM R1, 0
-MOV R3, R1
-SETNE R1, R2, R3
-BRZ ._while_skip_end_18
-
-//FuncCall modulo_divide(&num,&x,num,10)
-DEC R3, R15
-MOV R1, R3
-PSH R1
-SUB R3, R15, 4
-MOV R1, R3
-PSH R1
-DEC R3, R15
-LOAD R1, R3
-PSH R1
-IMM R1, 10
-PSH R1
-CAL ._function_modulo_divide
-
-//number[index] = (x + '0')
-SUB R3, R15, 4
-LOAD R1, R3
-MOV R2, R1
-IMM R1, '0'
-MOV R3, R1
-ADD R1, R2, R3
-PSH R1
-SUB R3, R15, 3
-LOAD R1, R3
-MOV R2, R1
-MOV R3, R15
-LOAD R1, R3
-ADD R1, R1, R2
-POP R2
-STORE R1, R2
-//index--
-SUB R3, R15, 3
-LOAD R1, R3
-DEC R1, R1
-STORE R3, R1
-BRA ._while_skip_start_18
-._while_skip_end_18
-
-//number[dgcount] = 0
-IMM R1, 0
 PSH R1
 SUB R3, R15, 2
 LOAD R1, R3
@@ -588,13 +843,410 @@ LOAD R1, R3
 ADD R1, R1, R2
 POP R2
 STORE R1, R2
-SUB R15, R15, 5
+._if_skip_end_28
+//x++
+SUB R3, R15, 2
+LOAD R1, R3
+INC R1, R1
+STORE R3, R1
+BRA ._while_skip_start_27
+._while_skip_end_27
+SUB R15, R15, 3
 RET
-._function_skip_itoa
+._function_skip_strcpy
+
+
+
+
+BRA ._function_skip_strcat
+._function_strcat
+ADD R15, R15, 4
+POP R1
+POP R2
+MOV R3, R15
+STORE R3, R2
+POP R2
+DEC R3, R15
+STORE R3, R2
+PSH R1
+
+//define *out
+DEC R3, R15
+LOAD R1, R3
+PSH R1
+CAL ._function_strlen
+MOV R2, R1
+PSH R2
+MOV R3, R15
+LOAD R1, R3
+PSH R1
+CAL ._function_strlen
+MOV R3, R1
+POP R2
+ADD R1, R2, R3
+MOV R2, R1
+IMM R1, 1
+MOV R3, R1
+ADD R1, R2, R3
+PSH R1
+IMM R1, 0
+PSH R1
+CAL ._function_calloc
+SUB R2, R15, 2
+STORE R2, R1
+
+//define x
+IMM R1, 0
+SUB R3, R15, 3
+STORE R3, R1
+
+//while((c[x] != 0))
+._while_skip_start_29
+SUB R3, R15, 3
+LOAD R1, R3
+DEC R3, R15
+LOAD R3, R3
+ADD R3, R3, R1
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 0
+MOV R3, R1
+SETNE R1, R2, R3
+BRZ ._while_skip_end_29
+
+//out[x] = c[x]
+SUB R3, R15, 3
+LOAD R1, R3
+DEC R3, R15
+LOAD R3, R3
+ADD R3, R3, R1
+LOAD R1, R3
+PSH R1
+SUB R3, R15, 3
+LOAD R1, R3
+MOV R2, R1
+SUB R3, R15, 2
+LOAD R1, R3
+ADD R1, R1, R2
+POP R2
+STORE R1, R2
+//x++
+SUB R3, R15, 3
+LOAD R1, R3
+INC R1, R1
+STORE R3, R1
+BRA ._while_skip_start_29
+._while_skip_end_29
+
+//x = 0
+IMM R1, 0
+SUB R3, R15, 3
+STORE R3, R1
+
+//while((c2[x] != 0))
+._while_skip_start_30
+SUB R3, R15, 3
+LOAD R1, R3
+MOV R3, R15
+LOAD R3, R3
+ADD R3, R3, R1
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 0
+MOV R3, R1
+SETNE R1, R2, R3
+BRZ ._while_skip_end_30
+
+//out[x] = c2[x]
+SUB R3, R15, 3
+LOAD R1, R3
+MOV R3, R15
+LOAD R3, R3
+ADD R3, R3, R1
+LOAD R1, R3
+PSH R1
+SUB R3, R15, 3
+LOAD R1, R3
+MOV R2, R1
+SUB R3, R15, 2
+LOAD R1, R3
+ADD R1, R1, R2
+POP R2
+STORE R1, R2
+//x++
+SUB R3, R15, 3
+LOAD R1, R3
+INC R1, R1
+STORE R3, R1
+BRA ._while_skip_start_30
+._while_skip_end_30
+
+//Return out
+SUB R3, R15, 2
+LOAD R1, R3
+SUB R15, R15, 4
+RET
+SUB R15, R15, 4
+RET
+._function_skip_strcat
+
+
+
+
+BRA ._function_skip_strdup
+._function_strdup
+ADD R15, R15, 3
+POP R1
+POP R2
+MOV R3, R15
+STORE R3, R2
+PSH R1
+
+//define *out
+MOV R3, R15
+LOAD R1, R3
+PSH R1
+CAL ._function_strlen
+MOV R2, R1
+IMM R1, 1
+MOV R3, R1
+ADD R1, R2, R3
+PSH R1
+IMM R1, 0
+PSH R1
+CAL ._function_calloc
+DEC R2, R15
+STORE R2, R1
+
+//define x
+IMM R1, 0
+SUB R3, R15, 2
+STORE R3, R1
+
+//while((c[x] != 0))
+._while_skip_start_31
+SUB R3, R15, 2
+LOAD R1, R3
+MOV R3, R15
+LOAD R3, R3
+ADD R3, R3, R1
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 0
+MOV R3, R1
+SETNE R1, R2, R3
+BRZ ._while_skip_end_31
+
+//out[x] = c[x]
+SUB R3, R15, 2
+LOAD R1, R3
+MOV R3, R15
+LOAD R3, R3
+ADD R3, R3, R1
+LOAD R1, R3
+PSH R1
+SUB R3, R15, 2
+LOAD R1, R3
+MOV R2, R1
+DEC R3, R15
+LOAD R1, R3
+ADD R1, R1, R2
+POP R2
+STORE R1, R2
+//x++
+SUB R3, R15, 2
+LOAD R1, R3
+INC R1, R1
+STORE R3, R1
+BRA ._while_skip_start_31
+._while_skip_end_31
+
+//Return out
+DEC R3, R15
+LOAD R1, R3
+SUB R15, R15, 3
+RET
+SUB R15, R15, 3
+RET
+._function_skip_strdup
 
 
 
 //define scancode
+
+
+BRA ._function_skip_input
+._function_input
+ADD R15, R15, 2
+POP R1
+POP R2
+MOV R3, R15
+STORE R3, R2
+PSH R1
+
+//define nChars
+IMM R1, 0
+DEC R3, R15
+STORE R3, R1
+
+//while(1)
+._while_skip_start_32
+IMM R1, 1
+BRZ ._while_skip_end_32
+
+//scancode = FuncCall __input__()
+IN R1, 3
+STORE 1, R1
+
+//if((scancode == 0))
+LOAD R1, 1
+MOV R2, R1
+IMM R1, 0
+MOV R3, R1
+SETE R1, R2, R3
+BRZ ._if_skip_end_33
+//continue
+BRA ._while_skip_start_32
+._if_skip_end_33
+
+//if((scancode == 10))
+LOAD R1, 1
+MOV R2, R1
+IMM R1, 10
+MOV R3, R1
+SETE R1, R2, R3
+BRZ ._if_skip_end_34
+//break
+BRA ._while_skip_end_32
+._if_skip_end_34
+
+//if((scancode > 31))
+LOAD R1, 1
+MOV R2, R1
+IMM R1, 31
+MOV R3, R1
+SETG R1, R2, R3
+BRZ ._if_skip_end_35
+
+//c[nChars] = scancode
+LOAD R1, 1
+PSH R1
+DEC R3, R15
+LOAD R1, R3
+MOV R2, R1
+MOV R3, R15
+LOAD R1, R3
+ADD R1, R1, R2
+POP R2
+STORE R1, R2
+//nChars++
+DEC R3, R15
+LOAD R1, R3
+INC R1, R1
+STORE R3, R1
+._if_skip_end_35
+
+//if((scancode == 8))
+LOAD R1, 1
+MOV R2, R1
+IMM R1, 8
+MOV R3, R1
+SETE R1, R2, R3
+BRZ ._if_skip_end_36
+
+//c[nChars] = 0
+IMM R1, 0
+PSH R1
+DEC R3, R15
+LOAD R1, R3
+MOV R2, R1
+MOV R3, R15
+LOAD R1, R3
+ADD R1, R1, R2
+POP R2
+STORE R1, R2
+//nChars--
+DEC R3, R15
+LOAD R1, R3
+DEC R1, R1
+STORE R3, R1
+._if_skip_end_36
+
+//FuncCall printchar(scancode)
+LOAD R1, 1
+PSH R1
+CAL ._function_printchar
+BRA ._while_skip_start_32
+._while_skip_end_32
+
+//c[nChars] = 0
+IMM R1, 0
+PSH R1
+DEC R3, R15
+LOAD R1, R3
+MOV R2, R1
+MOV R3, R15
+LOAD R1, R3
+ADD R1, R1, R2
+POP R2
+STORE R1, R2
+
+//Return nChars
+DEC R3, R15
+LOAD R1, R3
+SUB R15, R15, 2
+RET
+SUB R15, R15, 2
+RET
+._function_skip_input
+
+
+
+
+BRA ._function_skip_clear_screen
+._function_clear_screen
+
+//FuncCall __asm__("OUT 3, 10")
+OUT 3, 10
+
+//FuncCall __asm__("OUT 3, 10")
+OUT 3, 10
+
+//FuncCall __asm__("OUT 3, 10")
+OUT 3, 10
+
+//FuncCall __asm__("OUT 3, 10")
+OUT 3, 10
+
+//FuncCall __asm__("OUT 3, 10")
+OUT 3, 10
+
+//FuncCall __asm__("OUT 3, 10")
+OUT 3, 10
+RET
+._function_skip_clear_screen
+
+
+
+
+BRA ._function_skip_printchar
+._function_printchar
+INC R15, R15
+POP R1
+POP R2
+MOV R3, R15
+STORE R3, R2
+PSH R1
+
+//FuncCall __debugScreen__(c)
+MOV R3, R15
+LOAD R1, R3
+OUT 3, R1
+DEC R15, R15
+RET
+._function_skip_printchar
+
+
 
 
 BRA ._function_skip_printString
@@ -612,7 +1264,7 @@ DEC R3, R15
 STORE R3, R1
 
 //while((c[x] != 0))
-._while_skip_start_34
+._while_skip_start_37
 DEC R3, R15
 LOAD R1, R3
 MOV R3, R15
@@ -623,7 +1275,7 @@ MOV R2, R1
 IMM R1, 0
 MOV R3, R1
 SETNE R1, R2, R3
-BRZ ._while_skip_end_34
+BRZ ._while_skip_end_37
 
 //FuncCall __debugInt__(c[x])
 DEC R3, R15
@@ -647,8 +1299,8 @@ DEC R3, R15
 LOAD R1, R3
 INC R1, R1
 STORE R3, R1
-BRA ._while_skip_start_34
-._while_skip_end_34
+BRA ._while_skip_start_37
+._while_skip_end_37
 SUB R15, R15, 2
 RET
 ._function_skip_printString
@@ -656,42 +1308,279 @@ RET
 
 
 
-BRA ._function_skip_main
-._function_main
-INC R15, R15
+BRA ._function_skip_printInt
+._function_printInt
+ADD R15, R15, 4
+POP R1
+POP R2
+MOV R3, R15
+STORE R3, R2
+PSH R1
 
-//FuncCall init()
-CAL ._function_init
+//define dgcount
+MOV R3, R15
+LOAD R1, R3
+PSH R1
+CAL ._function_digit_count
+DEC R3, R15
+STORE R3, R1
 
-//define *reg
-IMM R1, 10
+//define *out
+DEC R3, R15
+LOAD R1, R3
 PSH R1
 CAL ._function_malloc
-MOV R2, R15
+SUB R2, R15, 2
 STORE R2, R1
 
-//FuncCall itoa(34224,reg)
-IMM R1, 34224
-PSH R1
-MOV R3, R15
-LOAD R1, R3
-PSH R1
-CAL ._function_itoa
+//define offset
+IMM R1, 0
+SUB R3, R15, 3
+STORE R3, R1
 
-//FuncCall printString(reg)
+//if((num == 0))
 MOV R3, R15
 LOAD R1, R3
+MOV R2, R1
+IMM R1, 0
+MOV R3, R1
+SETE R1, R2, R3
+BRZ ._if_skip_false_38
+
+//FuncCall __debugScreen__('0')
+IMM R1, '0'
+OUT 3, R1
+BRA ._if_skip_end_38
+._if_skip_false_38
+
+//while((num != 0))
+._while_skip_start_39
+MOV R3, R15
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 0
+MOV R3, R1
+SETNE R1, R2, R3
+BRZ ._while_skip_end_39
+
+//FuncCall modulo_divide(&num,(out + offset),num,10)
+MOV R3, R15
+MOV R1, R3
+PSH R1
+SUB R3, R15, 2
+LOAD R1, R3
+MOV R2, R1
+SUB R3, R15, 3
+LOAD R1, R3
+MOV R3, R1
+ADD R1, R2, R3
+PSH R1
+MOV R3, R15
+LOAD R1, R3
+PSH R1
+IMM R1, 10
+PSH R1
+CAL ._function_modulo_divide
+//offset++
+SUB R3, R15, 3
+LOAD R1, R3
+INC R1, R1
+STORE R3, R1
+BRA ._while_skip_start_39
+._while_skip_end_39
+//offset--
+SUB R3, R15, 3
+LOAD R1, R3
+DEC R1, R1
+STORE R3, R1
+
+//while((offset >= 0))
+._while_skip_start_40
+SUB R3, R15, 3
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 0
+MOV R3, R1
+SETGE R1, R2, R3
+BRZ ._while_skip_end_40
+
+//FuncCall __debugScreen__(('0' + out[offset]))
+IMM R1, '0'
+MOV R2, R1
+SUB R3, R15, 3
+LOAD R1, R3
+SUB R3, R15, 2
+LOAD R3, R3
+ADD R3, R3, R1
+LOAD R1, R3
+MOV R3, R1
+ADD R1, R2, R3
+OUT 3, R1
+//offset--
+SUB R3, R15, 3
+LOAD R1, R3
+DEC R1, R1
+STORE R3, R1
+BRA ._while_skip_start_40
+._while_skip_end_40
+._if_skip_end_38
+
+//FuncCall free(out)
+SUB R3, R15, 2
+LOAD R1, R3
+PSH R1
+CAL ._function_free
+SUB R15, R15, 4
+RET
+._function_skip_printInt
+
+
+
+
+BRA ._function_skip_strlen
+._function_strlen
+ADD R15, R15, 2
+POP R1
+POP R2
+MOV R3, R15
+STORE R3, R2
+PSH R1
+
+//define x
+IMM R1, 0
+DEC R3, R15
+STORE R3, R1
+
+//while((c[x] != 0))
+._while_skip_start_46
+DEC R3, R15
+LOAD R1, R3
+MOV R3, R15
+LOAD R3, R3
+ADD R3, R3, R1
+LOAD R1, R3
+MOV R2, R1
+IMM R1, 0
+MOV R3, R1
+SETNE R1, R2, R3
+BRZ ._while_skip_end_46
+//x++
+DEC R3, R15
+LOAD R1, R3
+INC R1, R1
+STORE R3, R1
+BRA ._while_skip_start_46
+._while_skip_end_46
+
+//Return x
+DEC R3, R15
+LOAD R1, R3
+SUB R15, R15, 2
+RET
+SUB R15, R15, 2
+RET
+._function_skip_strlen
+
+
+
+//define *stri1[]
+
+//define *stri2[]
+
+
+BRA ._function_skip_main
+._function_main
+ADD R15, R15, 5
+
+//FuncCall initMalloc()
+CAL ._function_initMalloc
+
+//FuncCall initFS()
+CAL ._function_initFS
+
+//define file_id
+CAL ._function_create_file
+MOV R3, R15
+STORE R3, R1
+
+//define file_id2
+CAL ._function_create_file
+DEC R3, R15
+STORE R3, R1
+
+//define len
+LOAD R1, 7
+PSH R1
+CAL ._function_strlen
+SUB R3, R15, 2
+STORE R3, R1
+
+//define offset1
+MOV R3, R15
+LOAD R1, R3
+PSH R1
+IMM R1, 0
+PSH R1
+LOAD R1, 7
+PSH R1
+SUB R3, R15, 2
+LOAD R1, R3
+PSH R1
+CAL ._function_writePart
+SUB R3, R15, 3
+STORE R3, R1
+
+//define offset2
+DEC R3, R15
+LOAD R1, R3
+PSH R1
+IMM R1, 0
+PSH R1
+LOAD R1, 13
+PSH R1
+SUB R3, R15, 2
+LOAD R1, R3
+PSH R1
+CAL ._function_writePart
+SUB R3, R15, 4
+STORE R3, R1
+
+//FuncCall readPart(file_id,0,stri2,len)
+MOV R3, R15
+LOAD R1, R3
+PSH R1
+IMM R1, 0
+PSH R1
+LOAD R1, 13
+PSH R1
+SUB R3, R15, 2
+LOAD R1, R3
+PSH R1
+CAL ._function_readPart
+
+//FuncCall readPart(file_id2,0,stri1,len)
+DEC R3, R15
+LOAD R1, R3
+PSH R1
+IMM R1, 0
+PSH R1
+LOAD R1, 7
+PSH R1
+SUB R3, R15, 2
+LOAD R1, R3
+PSH R1
+CAL ._function_readPart
+
+//FuncCall printString(stri1)
+LOAD R1, 7
 PSH R1
 CAL ._function_printString
 
-//FuncCall __debugInt__(34224)
-IMM R1, 34224
-OUT 0, R1
-
-//FuncCall __debugScreen__('\n')
-IMM R1, 10
-OUT 3, R1
-DEC R15, R15
+//FuncCall printString(stri2)
+LOAD R1, 13
+PSH R1
+CAL ._function_printString
+SUB R15, R15, 5
 RET
 ._function_skip_main
 

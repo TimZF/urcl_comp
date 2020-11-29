@@ -53,9 +53,10 @@ void calculator() {
 
 
 void main(){
+	initMalloc();
 	int foundComm = 0;
 
-	//init();
+
 	clear_screen();
 
 	printString(startUp);

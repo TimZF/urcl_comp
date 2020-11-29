@@ -1,29 +1,30 @@
 #include "libs/malloc.c"
-//#include "libs/virtualFS.c"
-//#include "libs/fixedpoint.c"
+#include "libs/FS.c"
 #include "libs/io.c"
+#include "libs/string.c"
 
-
-//char stri1[] = "\n/3=\n";
-//char stri2[] = "\n*3=\n";
+char stri1[] = "5678";
+char stri2[] = "1234";
 
 void main(){
-	init();
-	char* reg = malloc(10);
-	itoa(34224, reg);
-	printString(reg);
-	__debugInt__(34224);
-	__debugScreen__('\n');
+	initMalloc();
+	initFS();
 
-	//int fileId1 = createFile(8);
-	//int fileId2 = createFile(16);
-	//int fileId3 = createFile(32);
 
-	//rm(fileId2);
+	int file_id = create_file();
+	int file_id2 = create_file();
 
-	//ls();
+	int len = strlen(stri1);
 
-	//int size = getFileSize(fileId1);
-	//__debugInt__(size);
+	int offset1 = writePart(file_id, 0, stri1, len);
+	int offset2 = writePart(file_id2, 0, stri2, len);
+
+
+	readPart(file_id,  0, stri2, len);
+	readPart(file_id2, 0, stri1, len);
+
+	printString(stri1);
+	printString(stri2);
+
 }
 //load local into reg

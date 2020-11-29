@@ -101,7 +101,7 @@ def debugADD(command, sub=False):
 		return [add+"while("+debugADD(command.cond,True)+")"]
 
 	if type(command)==c_ast.For:
-		return [add+"for("+debugADD(command.init,True)+"; "+debugADD(command.cond,True)+"; "+debugADD(command.next,True)+")"]
+		return [add+f"for({debugADD(command.init,True)}); {debugADD(command.cond,True)}; {debugADD(command.next,True)})"]
 
 	if type(command)==c_ast.If:
 		return [add+"if("+debugADD(command.cond,True)+")"]
@@ -292,7 +292,6 @@ builtInMethods["__asm__"] = toAsm
 
 
 def forLoopDef(x, inMethod):
-
 	skipEnd = "._for_skip_end_" + str(skipId)
 	skipStart = "._for_skip_start_" + str(skipId)
 	skipContinue = "._for_skip_continue_" + str(skipId)
