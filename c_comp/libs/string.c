@@ -1,7 +1,4 @@
 #define __STRING
-#ifndef __MATH
-#include "math.c"
-#endif
 
 int digit_count(int num)
 {

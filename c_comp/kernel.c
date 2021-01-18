@@ -9,7 +9,7 @@
 #include "libs/arrayUtil.c"
 #include "libs/iso646.h"
 #include "libs/math.c"
-#include "libs/virtualFS.c"
+#include "libs/FS.c"
 
 char help_string[] = "HELP\nCALC\nCL\nP\nQ\n";
 char commNotFound[] = "COMM\nNOT\nFOUND\nTRY\nHELP\n";

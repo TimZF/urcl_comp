@@ -1,7 +1,3 @@
-#ifndef maxHeapSize
-#include "malloc.c"
-#endif
-
 
 
 int arrCmp(int *c, int *c2, int len) {

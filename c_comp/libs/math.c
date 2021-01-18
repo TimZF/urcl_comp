@@ -31,7 +31,6 @@ void divide(int* res, int a, int b){
 	__asm__("BRC +4","BRA -9","INC $2, $2","BRA -8");
 
 	__asm__("MOV R2, R1",res,"STORE R1, R2");
-	__asm__("RET");
 }
 
 
@@ -49,6 +48,5 @@ void modulo(int* res, int a, int b){
 	__asm__("NOT $2, $1");
 	__asm__("INC $1, $2");
 	__asm__("MOV R2, R1",res,"STORE R1, R2");
-	__asm__("RET");
 }
 

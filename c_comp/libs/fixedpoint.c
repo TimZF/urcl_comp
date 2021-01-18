@@ -1,12 +1,3 @@
-#ifndef __MATH
-#include "math.c"
-#endif
-#ifndef __STRING
-#include "string.c"
-#endif
-#ifndef maxAddress
-#include "malloc.c"
-#endif
 
 #define shiftValue 8
 #define fixedP int

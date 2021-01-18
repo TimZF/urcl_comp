@@ -1,6 +1,4 @@
-#ifndef __STRING
-#include "string.c"
-#endif
+
 
 #define maxCharsOnScreen 10
 int scancode = 0;

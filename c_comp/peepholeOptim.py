@@ -1,5 +1,98 @@
 branchingComms = ["CAL","RET","BRA","BRC","BNC","BRZ","BNZ","BRN","BRP","BRL","BRG","BRE","BNE","BOD","BEV","BLE","BGE"]
 
+
+
+def collectVars(currScope):
+	return currScope.vars+sum([collectVars(x) for x in currScope.children], [])
+
+
+def regOptim(asm, scopeTree, usableRegs):
+	currScope = scopeTree
+	regOptim = False
+	optimScope = None
+	placements = {}
+
+	idx = 0
+	while idx<len(asm):
+		if asm[idx].startswith("#pragma reg"):
+			regOptim = True
+			del asm[idx]
+			idx -= 1
+
+		elif asm[idx].startswith("ENTERSCOPE_"):
+			found = False
+			for child in currScope.children:
+				if child.name==asm[idx][11:]:
+					currScope = child
+					found = True
+			if not found:
+				raise Exception(f"SCOPE {asm[idx][11:]} NOT FOUND EXCEPTION! AVAILABLE SCOPES:{currScope}")
+
+
+			varsInScope = collectVars(currScope)#sum([x.vars for x in currScope.children], [])+currScope.vars
+
+
+			if regOptim and optimScope==None:
+				if len(varsInScope)<len(usableRegs):
+					optimScope = currScope
+					placements = {}
+					for x in range(len(varsInScope)):
+						placements[varsInScope[x]] = usableRegs[x]
+					print(f"OPTIMIZED REG PLACEMENT FOR {currScope.name}")
+					print(placements)
+				else:
+					print("WARNING: tried to use reg pragma but to many local variables")
+
+		elif asm[idx].startswith("LEAVESCOPE_"):
+			
+			n2Leave = int(asm[idx][11:])
+			for gg in range(n2Leave):
+				if optimScope!=None and currScope.name==optimScope.name:
+					regOptim = False
+					optimScope = None
+				currScope = currScope.parent
+
+		elif regOptim:
+			if asm[idx].startswith("SUB R3, R15, ") and "!" in asm[idx]:
+				var = asm[idx].split("!")[-1]
+				if var in placements:
+					replacementReg = placements[var]
+					del asm[idx] 
+					if asm[idx].startswith("LOAD"):
+						asm[idx] = f"MOV {asm[idx].split(' ')[1]} {replacementReg}"
+					if asm[idx].startswith("STORE"):
+						asm[idx] = f"MOV {replacementReg}, {asm[idx].split(',')[-1].strip()}"
+		
+			elif asm[idx].startswith("CAL"):
+				currScope
+				regs = list(placements.values())
+				for reg in regs:
+					asm.insert(idx, f"PSH {reg}")
+
+				for reg in reversed(regs):
+					asm.insert(idx+len(regs)+1, f"POP {reg}")
+				idx += len(reg)+4
+		idx+=1
+
+	return asm
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def peepHoleBS_SH(asm, only_uncomment):
 	x = 0
 
@@ -42,7 +135,7 @@ def peepHoleIMM(asm, only_uncomment):
 	while x < len(asm):
 		comm = [x.replace(",","") for x in asm[x].split(" ")]
 		
-		if comm[0] in ["IMM","STORE"]+branchingComms:
+		if comm[0] in ["STORE"]+branchingComms:
 			x+=1
 			continue
 
@@ -53,10 +146,21 @@ def peepHoleIMM(asm, only_uncomment):
 			val = comm[2]
 			idx = x
 
-		if (len(comm)>1 and comm[1]==reg and comm[0]!="IMM") or comm[0].startswith("."):
+
+		elif (len(comm)>1 and comm[1]==reg) or comm[0].startswith("."):
 			modified = True
 
-		if not modified and (len(comm)>2 and comm[2]==reg):
+		elif not modified and (comm[0]=="MOV" and comm[2]==reg):
+			if only_uncomment:
+				asm[idx] = "//"+asm[idx]
+			else:
+				del asm[idx]
+				x-=1
+			comm[2] = val
+			asm[x] = "IMM"+" "+", ".join(comm[1:])
+			print(comm)
+
+		elif not modified and (len(comm)>2 and comm[2]==reg):
 			if only_uncomment:
 				asm[idx] = "//"+asm[idx]
 			else:
@@ -66,7 +170,7 @@ def peepHoleIMM(asm, only_uncomment):
 			asm[x] = comm[0]+" "+", ".join(comm[1:])
 			print(comm)
 
-		if not modified and (len(comm)>3 and comm[3]==reg):
+		elif not modified and (len(comm)>3 and comm[3]==reg):
 			if only_uncomment:
 				asm[idx] = "//"+asm[idx]
 			else:
@@ -178,6 +282,69 @@ def peepHoleUselessMove(asm, only_uncomment):
 				asm[x] = "//"+asm[x]
 			else:
 				del asm[x]
+	x = 0
+	while x<len(asm):
+		comm = [g.replace(",","") for g in asm[x].split(" ")]
+		#(comm[1]=="R1" or comm[1]=="R2")
+		if comm[0]=="MOV" and (comm[1]=="R1" or comm[1]=="R2" or comm[1]=="R3") and comm[2][0]=="R" and not (comm[2]=="R1" or comm[2]=="R2" or comm[2]=="R3"):
+			del asm[x]
+			y = x
+			orig = comm[1]
+			new = comm[2]
+
+			optimized = False
+			while y<len(asm):
+				commT = [g.replace(",","") for g in asm[y].split(" ")]
+				if commT[0] in ["STORE","PUSH"] and commT[1]==orig:
+					asm[y] = f"{commT[0]} "+", ".join([new]+commT[2:]) 
+					print(commT,asm[y])
+					optimized = True
+					y = x-1
+				if len(commT)==3 and commT[2]==orig:
+					asm[y] = f"{commT[0]} {commT[1]}, {new}"
+					print(commT,asm[y])
+					optimized = True
+					y = x-1
+				elif len(commT)==4 and commT[3]==orig:
+					asm[y] = f"{commT[0]} {commT[1]}, {commT[2]}, {new}"
+					print(commT,asm[y])
+					optimized = True
+					y = x-1
+				elif len(commT)==4 and commT[2]==orig:
+					asm[y] = f"{commT[0]} {commT[1]}, {new}, {commT[3]}"
+					print(commT,asm[y])
+					optimized = True
+					y = x-1
+
+				if (len(commT)>=2 and commT[1]==orig) or commT[0] in branchingComms:
+					break
+				y+=1
+			if optimized:
+				x -= 1
+
+		x += 1
+	return asm
+
+
+
+def peepHoleIncMove(asm, only_uncomment):
+	#INC R1, R6
+	#MOV R6, R1
+	x = 0
+	while x<len(asm):
+		if asm[x].startswith("INC R1, ") and asm[x+1].startswith("MOV "):
+			comm = [g.replace(",","") for g in asm[x].split(" ")]
+			commNext = [g.replace(",","") for g in asm[x+1].split(" ")]
+
+			asm[x] = f"INC {commNext[1]}, {comm[-1]}"
+			if only_uncomment:
+				asm[x+1] = "//"+asm[x+1]
+			else:
+				del asm[x+1]
+			
+
+		x+=1
+
 	return asm
 
 
@@ -241,10 +408,12 @@ def optimize(coms, only_uncomment, initFunc, runs=1):
 
 	for x in range(runs):
 		print("\n========OPTIMIZE RUN "+str(x)+"========")
+		print("\nINC OPTIM")
+		coms = peepHoleIncMove(coms, only_uncomment)
 		print("\nIMM OPTIM:")
 		coms = peepHoleIMM(coms, only_uncomment)
 		print("\nDOUBLE USE OPTIM:")
-		coms = peepHoleCopy(coms, only_uncomment)
+		#coms = peepHoleCopy(coms, only_uncomment)
 	
 	
 		print("\nSUB/ADD 0 OPTIM:")

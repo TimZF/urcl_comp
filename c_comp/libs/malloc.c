@@ -24,13 +24,18 @@ void initMalloc(){
 	head->next = 0;
 	head->prev = 0;
 	head->free = 1;
+
 }
 
 int* malloc(size_t size){
 	if(size<=0){return 0;}
 	mallocStruct* block;
 	block = head;
+
+
+
 	while(1==1){
+
 		if (block->free==1) {if (block->size>=size) {break;}}
 
 		if(block->next==0){return 0;}
